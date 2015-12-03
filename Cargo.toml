@@ -1,0 +1,4 @@
+[package]
+name = "vegas-rs"
+version = "0.1.0"
+authors = ["Oscar David Arbeláez Echeverri <odarbelaeze@gmail.com>"]
