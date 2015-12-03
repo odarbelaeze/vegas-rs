@@ -208,10 +208,13 @@ impl Crystal {
         ) -> Crystal
     {
         let mut lims = vec![0i64];
-        let mut nbhs = vec![0i64];
+        let mut nbhs = vec![];
         let shape = basis.cell_it.shape();
         let natoms = basis.natoms();
-        Crystal { lims: Vec::new(), nbhs: Vec::new() }
+        for site in basis {
+            lims.push(0);
+        }
+        Crystal { lims: lims, nbhs: nbhs, }
     }
 }
 
