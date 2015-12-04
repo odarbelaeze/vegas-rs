@@ -196,8 +196,8 @@ impl NeighborList {
 
 
 struct Crystal {
-    lims: Vec<i64>,
-    nbhs: Vec<i64>,
+    lims: Vec<usize>,
+    nbhs: Vec<usize>,
 }
 
 impl Crystal {
@@ -207,12 +207,21 @@ impl Crystal {
         pbc: (bool, bool, bool)
         ) -> Crystal
     {
-        let mut lims = vec![0i64];
+        let mut lims = vec![0];
         let mut nbhs = vec![];
         let shape = basis.cell_it.shape();
         let natoms = basis.natoms();
         for site in basis {
-            lims.push(0);
+            let mut pnbhs = vec![];
+            for nbh in neighbors.list.iter() {
+                match nbh.of(&site) {
+                    Some(site) => { pnbhs.push(0); }
+                    None => {}
+                }
+            }
+            let last = lims.last().unwrap().clone();
+            lims.push(last + pnbhs.len());
+            nbhs.extend(pnbhs.iter());
         }
         Crystal { lims: lims, nbhs: nbhs, }
     }
@@ -245,5 +254,15 @@ fn main() {
     for site in BasisIterator::new_with_atoms(CellIterator::cube(2), 2) {
         let sup = upper.of(&site);
         println!("{:?} -> upper (of type 0) -> {:?}", site, sup);
+    }
+
+    println!("Neighbors attempt");
+    let crystal = Crystal::new(
+        NeighborList::hcp(),
+        BasisIterator::new_with_atoms(CellIterator::cube(3), 2),
+        (true, true, true));
+    println!("len lims {}\nlen nbhs {}", crystal.lims.len(), crystal.nbhs.len());
+    for item in crystal.lims {
+        println!("lims explicit {}", item);
     }
 }
