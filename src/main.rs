@@ -1,5 +1,6 @@
 use std::iter::Filter;
 use std::slice::Iter;
+use std::num;
 
 
 #[derive(Debug)]
@@ -12,6 +13,59 @@ struct Site {
 struct CellIterator {
     cur: i64,
     max: (i64, i64, i64),
+}
+
+
+struct Lattice {
+    pbc: (bool, bool, bool),
+    shape: (i64, i64, i64),
+    natoms: u32,
+    neighbors: NeighborList,
+}
+
+
+fn super_mod(num: i64, basis: i64) ->  i64 {
+    let num = num % basis;
+    if num < 0 {
+        return basis + num
+    }
+    num
+}
+
+
+impl Lattice {
+    fn inside(&self, site: &Site) ->  Option<Site> {
+        if !(site.atom < self.natoms) {
+            return None
+        }
+
+        let (mut x, mut y, mut z) = site.cell;
+
+        if (!self.pbc.0  && (x < 0 || self.shape.0 <= x)) {
+            return None
+        } else {
+            x = super_mod(x, self.shape.0);
+        }
+
+        if (!self.pbc.1  && (y < 0 || self.shape.1 <= y)) {
+            return None
+        } else {
+            y = super_mod(y, self.shape.1);
+        }
+
+        if (!self.pbc.2  && (z < 0 || self.shape.2 <= z)) {
+            return None
+        } else {
+            z = super_mod(z, self.shape.2);
+        }
+
+        Some(Site { cell: (x, y, z), atom: site.atom} )
+    }
+}
+
+
+enum Template {
+    cubic, hcp,
 }
 
 
@@ -264,5 +318,22 @@ fn main() {
     println!("len lims {}\nlen nbhs {}", crystal.lims.len(), crystal.nbhs.len());
     for item in crystal.lims {
         println!("lims explicit {}", item);
+    }
+
+    println!("test module {}", -11 % 10);
+    assert_eq!(9, super_mod(-1,  10));
+    assert_eq!(9, super_mod(-11, 10));
+    assert_eq!(0, super_mod(-10, 10));
+
+    let latt = Lattice {
+        pbc: (true, true, false),
+        shape: (10, 10, 10),
+        natoms: 2,
+        neighbors: NeighborList::cubic(),
+    };
+
+    match latt.inside(&Site { cell: (10, 10, 9), atom: 1 }) {
+        None => panic!("La embarrasteis"),
+        Some(site) => println!("Calidoso: {:?}", site),
     }
 }
