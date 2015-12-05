@@ -35,7 +35,11 @@ impl Lattice {
         }
 
         let (mut x, mut y, mut z) = site.cell;
-        let (sx, sy, sz) = ( self.shape.0 as i64, self.shape.1 as i64, self.shape.2 as i64,);
+        let (sx, sy, sz) = (
+            self.shape.0 as i64,
+            self.shape.1 as i64,
+            self.shape.2 as i64,
+            );
 
         if !self.pbc.0  && (x < 0 || sx <= x) {
             return None
@@ -106,28 +110,52 @@ pub struct LatticeBuilder {
 }
 
 
+/// A little builder for lattices
+impl LatticeBuilder {
+    pub fn new() -> LatticeBuilder {
+        LatticeBuilder {
+            pbc: (true, true, true),
+            shape: (10u32, 10u32, 10u32),
+            natoms: 1u32,
+            vertices: Vec::new(),
+        }
+    }
+
+    pub fn pbc(mut self, pbc: (bool, bool, bool)) -> LatticeBuilder {
+        self.pbc = pbc;
+        self
+    }
+
+    pub fn shape(mut self, shape: (u32, u32, u32)) -> LatticeBuilder {
+        self.shape = shape;
+        self
+    }
+
+    pub fn natoms(mut self, natoms: u32) -> LatticeBuilder {
+        self.natoms = natoms;
+        self
+    }
+
+    pub fn vertices(mut self, vertices: Vec<Vertex>) -> LatticeBuilder {
+        self.vertices = vertices;
+        self
+    }
+
+    pub fn finalize(self) -> Lattice {
+        Lattice {
+            pbc: self.pbc,
+            shape: self.shape,
+            natoms: self.natoms,
+            vertices: self.vertices,
+        }
+    }
+}
+
+
 /// Iterates over the cells of a lattice
 struct CellIterator {
     cur: u32,
     max: (u32, u32, u32),
-}
-
-
-/// Iterates over the sites of a lattice
-pub struct SiteIterator {
-    cell_it: CellIterator,
-    cur_cell: Option<<CellIterator as Iterator>::Item>,
-    cur_at: u32,
-    max_at: u32,
-}
-
-
-/// Represents a vertex descriptor, for a vertex that can go beyond the
-/// unit cell of a lattice.
-pub struct Vertex {
-    source: u32,
-    target: u32,
-    delta: (i64, i64, i64),
 }
 
 
@@ -153,6 +181,15 @@ impl Iterator for CellIterator {
         Some((x, y, z))
     }
 
+}
+
+
+/// Iterates over the sites of a lattice
+pub struct SiteIterator {
+    cell_it: CellIterator,
+    cur_cell: Option<<CellIterator as Iterator>::Item>,
+    cur_at: u32,
+    max_at: u32,
 }
 
 
@@ -194,6 +231,15 @@ impl Iterator for SiteIterator {
         }
     }
 
+}
+
+
+/// Represents a vertex descriptor, for a vertex that can go beyond the
+/// unit cell of a lattice.
+pub struct Vertex {
+    source: u32,
+    target: u32,
+    delta: (i64, i64, i64),
 }
 
 
@@ -256,46 +302,5 @@ impl Vertex {
             Vertex { source: 1, target: 0, delta: ( 1,  0,  1) },
             Vertex { source: 1, target: 0, delta: ( 1,  1,  1) },
         ]
-    }
-}
-
-/// A little builder for lattices
-impl LatticeBuilder {
-    pub fn new() -> LatticeBuilder {
-        LatticeBuilder {
-            pbc: (true, true, true),
-            shape: (10u32, 10u32, 10u32),
-            natoms: 1u32,
-            vertices: Vec::new(),
-        }
-    }
-
-    pub fn pbc(mut self, pbc: (bool, bool, bool)) -> LatticeBuilder {
-        self.pbc = pbc;
-        self
-    }
-
-    pub fn shape(mut self, shape: (u32, u32, u32)) -> LatticeBuilder {
-        self.shape = shape;
-        self
-    }
-
-    pub fn natoms(mut self, natoms: u32) -> LatticeBuilder {
-        self.natoms = natoms;
-        self
-    }
-
-    pub fn vertices(mut self, vertices: Vec<Vertex>) -> LatticeBuilder {
-        self.vertices = vertices;
-        self
-    }
-
-    pub fn finalize(self) -> Lattice {
-        Lattice {
-            pbc: self.pbc,
-            shape: self.shape,
-            natoms: self.natoms,
-            vertices: self.vertices,
-        }
     }
 }
