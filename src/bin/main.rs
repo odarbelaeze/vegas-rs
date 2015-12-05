@@ -1,13 +1,9 @@
-use std::iter::Filter;
-use std::slice::Iter;
-use std::num;
+extern crate vegas;
 
-mod sample;
-use sample::util::super_mod;
-use sample::lattice::Lattice;
-use sample::lattice::LatticeBuilder;
-use sample::lattice::Site;
-use sample::lattice::Vertex;
+use vegas::util::super_mod;
+use vegas::lattice::Lattice;
+use vegas::lattice::LatticeBuilder;
+use vegas::lattice::Vertex;
 
 
 struct Crystal {

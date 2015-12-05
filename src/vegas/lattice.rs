@@ -1,6 +1,6 @@
 //! Useful functions and data structures to build lattices
 
-use sample::util::super_mod;
+use util::super_mod;
 
 
 #[derive(Debug)]
@@ -24,40 +24,6 @@ pub struct Lattice {
 }
 
 
-/// A little builder for lattices
-pub struct LatticeBuilder {
-    pbc: (bool, bool, bool),
-    shape: (u32, u32, u32),
-    natoms: u32,
-    vertices: Vec<Vertex>,
-}
-
-
-/// Iterates over the cells of a lattice
-struct CellIterator {
-    cur: u32,
-    max: (u32, u32, u32),
-}
-
-
-/// Iterates over the sites of a lattice
-struct SiteIterator {
-    cell_it: CellIterator,
-    cur_cell: Option<<CellIterator as Iterator>::Item>,
-    cur_at: u32,
-    max_at: u32,
-}
-
-
-/// Represents a vertex descriptor, for a vertex that can go beyond the
-/// unit cell of a lattice.
-pub struct Vertex {
-    source: u32,
-    target: u32,
-    delta: (i64, i64, i64),
-}
-
-
 impl Lattice {
 
     /// Returns a site in the first image of a lattice according the lattice's
@@ -71,19 +37,19 @@ impl Lattice {
         let (mut x, mut y, mut z) = site.cell;
         let (sx, sy, sz) = ( self.shape.0 as i64, self.shape.1 as i64, self.shape.2 as i64,);
 
-        if (!self.pbc.0  && (x < 0 || sx <= x)) {
+        if !self.pbc.0  && (x < 0 || sx <= x) {
             return None
         } else {
             x = super_mod(x, sx);
         }
 
-        if (!self.pbc.1  && (y < 0 || sy <= y)) {
+        if !self.pbc.1  && (y < 0 || sy <= y) {
             return None
         } else {
             y = super_mod(y, sy);
         }
 
-        if (!self.pbc.2  && (z < 0 || sz <= z)) {
+        if !self.pbc.2  && (z < 0 || sz <= z) {
             return None
         } else {
             z = super_mod(z, sz);
@@ -128,6 +94,40 @@ impl Lattice {
         })
     }
 
+}
+
+
+/// A little builder for lattices
+pub struct LatticeBuilder {
+    pbc: (bool, bool, bool),
+    shape: (u32, u32, u32),
+    natoms: u32,
+    vertices: Vec<Vertex>,
+}
+
+
+/// Iterates over the cells of a lattice
+struct CellIterator {
+    cur: u32,
+    max: (u32, u32, u32),
+}
+
+
+/// Iterates over the sites of a lattice
+pub struct SiteIterator {
+    cell_it: CellIterator,
+    cur_cell: Option<<CellIterator as Iterator>::Item>,
+    cur_at: u32,
+    max_at: u32,
+}
+
+
+/// Represents a vertex descriptor, for a vertex that can go beyond the
+/// unit cell of a lattice.
+pub struct Vertex {
+    source: u32,
+    target: u32,
+    delta: (i64, i64, i64),
 }
 
 
