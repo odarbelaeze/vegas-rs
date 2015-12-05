@@ -24,6 +24,15 @@ pub struct Lattice {
 }
 
 
+/// A little builder for lattices
+pub struct LatticeBuilder {
+    pbc: (bool, bool, bool),
+    shape: (u32, u32, u32),
+    natoms: u32,
+    vertices: Vec<Vertex>,
+}
+
+
 /// Iterates over the cells of a lattice
 struct CellIterator {
     cur: u32,
@@ -101,18 +110,24 @@ impl Lattice {
         })
     }
 
-    fn targets(&self, site: &Site) -> Option<Vec<Site>> {
+    pub fn targets(&self, site: &Site) -> Option<Vec<Site>> {
         self.inside(site).map(|site| {
             let mut tgts: Vec<Site> = vec![];
             for vx in &self.vertices {
                 match vx.target_for(&site) {
                     None => continue,
-                    Some(tgt) => tgts.push(tgt),
+                    Some(tgt) => {
+                        match self.inside(&tgt) {
+                            None => continue,
+                            Some(tgt) => tgts.push(tgt),
+                        }
+                    },
                 }
             }
             tgts
         })
     }
+
 }
 
 
@@ -241,5 +256,46 @@ impl Vertex {
             Vertex { source: 1, target: 0, delta: ( 1,  0,  1) },
             Vertex { source: 1, target: 0, delta: ( 1,  1,  1) },
         ]
+    }
+}
+
+/// A little builder for lattices
+impl LatticeBuilder {
+    pub fn new() -> LatticeBuilder {
+        LatticeBuilder {
+            pbc: (true, true, true),
+            shape: (10u32, 10u32, 10u32),
+            natoms: 1u32,
+            vertices: Vec::new(),
+        }
+    }
+
+    pub fn pbc(mut self, pbc: (bool, bool, bool)) -> LatticeBuilder {
+        self.pbc = pbc;
+        self
+    }
+
+    pub fn shape(mut self, shape: (u32, u32, u32)) -> LatticeBuilder {
+        self.shape = shape;
+        self
+    }
+
+    pub fn natoms(mut self, natoms: u32) -> LatticeBuilder {
+        self.natoms = natoms;
+        self
+    }
+
+    pub fn vertices(mut self, vertices: Vec<Vertex>) -> LatticeBuilder {
+        self.vertices = vertices;
+        self
+    }
+
+    pub fn finalize(self) -> Lattice {
+        Lattice {
+            pbc: self.pbc,
+            shape: self.shape,
+            natoms: self.natoms,
+            vertices: self.vertices,
+        }
     }
 }
