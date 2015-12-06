@@ -40,11 +40,6 @@ impl Crystal {
 
 
 fn main() {
-    println!("test module {}", -11 % 10);
-    assert_eq!(9, super_mod(-1,  10));
-    assert_eq!(9, super_mod(-11, 10));
-    assert_eq!(0, super_mod(-10, 10));
-
     let latt = LatticeBuilder::new()
         .pbc((true, true, false))
         .vertices(Vertex::list_for_cubic())

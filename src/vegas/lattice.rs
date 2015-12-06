@@ -304,3 +304,17 @@ impl Vertex {
         ]
     }
 }
+
+// Tests
+
+#[test]
+fn testing_the_inside() {
+    let latt = LatticeBuilder::new()
+        .pbc((true, true, false))
+        .vertices(Vertex::list_for_cubic())
+        .finalize();
+    assert!(latt.inside(&Site { cell: (10, 10, 9), atom: 0 }).is_some());
+    assert!(latt.inside(&Site { cell: (10, -1, 9), atom: 0 }).is_some());
+    assert!(latt.inside(&Site { cell: (10, 10, 10), atom: 0 }).is_none());
+    assert!(latt.inside(&Site { cell: (10, 10, 9), atom: 2 }).is_none());
+}
