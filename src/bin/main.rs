@@ -1,6 +1,5 @@
 extern crate vegas;
 
-use vegas::util::super_mod;
 use vegas::lattice::Lattice;
 use vegas::lattice::LatticeBuilder;
 use vegas::lattice::Vertex;
@@ -10,6 +9,7 @@ struct Crystal {
     lims: Vec<usize>,
     nbhs: Vec<usize>,
 }
+
 
 impl Crystal {
     pub fn new(lattice: Lattice) -> Crystal
@@ -41,32 +41,14 @@ impl Crystal {
 
 fn main() {
     let latt = LatticeBuilder::new()
-        .pbc((true, true, false))
-        .vertices(Vertex::list_for_cubic())
+        .pbc((true, true, true))
+        .shape((10, 10, 10))
+        .vertices(Vertex::list_for_hcp())
+        .natoms(2)
         .finalize();
-
-//    match latt.inside(&Site { cell: (10, 10, 9), atom: 0 }) {
-//        None => panic!("La embarrasteis"),
-//        Some(site) => println!("Calidoso: {:?}", site),
-//    }
-//
-//    match latt.inside(&Site { cell: (10, -1, 9), atom: 0 }) {
-//        None => panic!("La embarrasteis"),
-//        Some(site) => println!("Calidoso: {:?}", site),
-//    }
-//
-//    match latt.inside(&Site { cell: (10, 10, 10), atom: 0 }) {
-//        None => println!("Calidoso!"),
-//        Some(site) => panic!("La embarrasteis {:?}", site),
-//    }
-//
-//    match latt.inside(&Site { cell: (10, 10, 9), atom: 2 }) {
-//        None => println!("Calidoso!"),
-//        Some(site) => panic!("La embarrasteis {:?}", site),
-//    }
 
     println!("Neighbors attempt");
     let crystal = Crystal::new(latt);
     println!("len lims {}\nlen nbhs {}", crystal.lims.len(), crystal.nbhs.len());
-    assert_eq!(vec![990, 909, 998, 989, 899], crystal.nbhs_of(999).unwrap());
+    // assert_eq!(vec![990, 909, 998, 989, 899], crystal.nbhs_of(999).unwrap());
 }

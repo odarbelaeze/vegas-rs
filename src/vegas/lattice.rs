@@ -244,6 +244,7 @@ pub struct Vertex {
 
 
 impl Vertex {
+
     fn target_for(&self, site: &Site) -> Option<Site> {
         if site.atom != self.source {
             return None
@@ -301,6 +302,23 @@ impl Vertex {
             Vertex { source: 1, target: 0, delta: ( 0,  0,  1) },
             Vertex { source: 1, target: 0, delta: ( 1,  0,  1) },
             Vertex { source: 1, target: 0, delta: ( 1,  1,  1) },
+        ]
+    }
+
+    pub fn list_for_honeycomb() ->  Vec<Vertex> {
+        vec![
+            Vertex{ source: 0, target: 1, delta: (0, 0, 0) },
+            Vertex{ source: 1, target: 0, delta: (0, 0, 0) },
+            Vertex{ source: 0, target: 1, delta: (1, 0, 0) },
+            Vertex{ source: 1, target: 0, delta: (0, 1, 0) },
+            Vertex{ source: 0, target: 1, delta: (-1, 0, 0) },
+            Vertex{ source: 1, target: 0, delta: (0, -1, 0) },
+
+            // For the 3D lulz
+            Vertex{ source: 0, target: 0, delta: (0, 0, 1) },
+            Vertex{ source: 1, target: 1, delta: (0, 0, 1) },
+            Vertex{ source: 0, target: 0, delta: (0, 0, -1) },
+            Vertex{ source: 1, target: 1, delta: (0, 0, -1) },
         ]
     }
 }
