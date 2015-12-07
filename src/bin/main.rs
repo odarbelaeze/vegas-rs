@@ -1,3 +1,9 @@
+use std::ops::Mul;
+
+extern crate rand;
+use rand::distributions::normal::StandardNormal;
+use rand::distributions::{IndependentSample, Range};
+
 extern crate vegas;
 
 use vegas::lattice::Lattice;
@@ -5,14 +11,14 @@ use vegas::lattice::LatticeBuilder;
 use vegas::lattice::Vertex;
 
 
-struct Crystal {
+struct Adjacency {
     lims: Vec<usize>,
     nbhs: Vec<usize>,
 }
 
 
-impl Crystal {
-    pub fn new(lattice: Lattice) -> Crystal
+impl Adjacency {
+    pub fn new(lattice: Lattice) -> Adjacency
     {
         let mut lims = vec![0];
         let mut nbhs = vec![];
@@ -25,7 +31,7 @@ impl Crystal {
             lims.push(last + pnbhs.len());
             nbhs.extend(pnbhs.iter());
         }
-        Crystal { lims: lims, nbhs: nbhs, }
+        Adjacency { lims: lims, nbhs: nbhs, }
     }
 
     fn nbhs_of<'a>(&'a self, item: usize) -> Option<&'a[usize]> {
@@ -39,16 +45,103 @@ impl Crystal {
 }
 
 
+#[derive(Copy, Clone)]
+struct Spin {
+    x: f64,
+    y: f64,
+    z: f64,
+}
+
+
+impl Spin {
+    pub fn up() -> Spin {
+        Spin { x: 0.0f64, y: 0.0f64, z: 1.0f64,  }
+    }
+
+    pub fn rand() -> Spin {
+        let StandardNormal(x) = rand::random();
+        let StandardNormal(y) = rand::random();
+        let StandardNormal(z) = rand::random();
+        let norm = (x * x + y * y + z * z).sqrt();
+        Spin { x: x / norm, y: y / norm, z: z / norm, }
+    }
+}
+
+
+impl Mul for Spin {
+
+    type Output = f64;
+
+    fn mul(self, other: Spin) ->  f64 {
+        self.x * other.x + self.y * other.y + self.z * other.z
+    }
+}
+
+
+trait EnergyComponent {
+    fn energy(&self, state: &Vec<Spin>, index: usize) ->  f64;
+    fn total_energy(&self, state: &Vec<Spin>) -> f64 {
+        let mut total = 0f64;
+        for i in 0..state.len() {
+            total += self.energy(state, i);
+        }
+        total
+    }
+}
+
+
+struct ExchangeComponent {
+    adjacency: Adjacency,
+}
+
+
+impl EnergyComponent for ExchangeComponent {
+    fn energy(&self, state: &Vec<Spin>, index: usize) -> f64 {
+        let mut ene = 0f64;
+        let s = state[index];
+        for nb in self.adjacency.nbhs_of(index).unwrap() {
+            ene -= s * state[*nb];
+        }
+        ene
+    }
+}
+
+fn step(energy: &ExchangeComponent, state: &Vec<Spin>, temp: f64) -> Vec<Spin> {
+    let mut new_state = state.clone();
+    let sites = Range::new(0, new_state.len());
+    let mut rng = rand::thread_rng();
+    for _ in 0..new_state.len() {
+        let site = sites.ind_sample(&mut rng);
+        let old_energy = energy.energy(&new_state, site);
+        new_state[site] = Spin::rand();
+        let new_energy = energy.energy(&new_state, site);
+        let delta = new_energy - old_energy;
+        if delta < 0.0 {
+            continue
+        }
+        if rand::random::<f64>() < (- delta / temp).exp() {
+            continue
+        }
+        new_state[site] = state[site];
+    }
+    new_state
+}
+
+
 fn main() {
+
     let latt = LatticeBuilder::new()
         .pbc((true, true, true))
         .shape((10, 10, 10))
-        .vertices(Vertex::list_for_hcp())
-        .natoms(2)
+        .vertices(Vertex::list_for_cubic())
+        .natoms(1)
         .finalize();
 
-    println!("Neighbors attempt");
-    let crystal = Crystal::new(latt);
-    println!("len lims {}\nlen nbhs {}", crystal.lims.len(), crystal.nbhs.len());
-    // assert_eq!(vec![990, 909, 998, 989, 899], crystal.nbhs_of(999).unwrap());
+    let exchange = ExchangeComponent { adjacency: Adjacency::new(latt) };
+    let mut state = vec![Spin::up(); 1000];
+
+    for _ in 0..1000 {
+        state = step(&exchange, &state, 0.3);
+        println!("{}", exchange.total_energy(&state));
+    }
 }

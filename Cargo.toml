@@ -10,3 +10,6 @@ path = "src/vegas/lib.rs"
 [[bin]]
 name = "vegas"
 path = "src/bin/main.rs"
+
+[dependencies]
+rand = "0.3"
