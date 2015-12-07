@@ -138,10 +138,20 @@ fn main() {
         .finalize();
 
     let exchange = ExchangeComponent { adjacency: Adjacency::new(latt) };
-    let mut state = vec![Spin::up(); 1000];
+    let mut state = (0..1000).map(|_| {
+        Spin::rand()
+    }).collect();
 
-    for _ in 0..1000 {
-        state = step(&exchange, &state, 0.3);
-        println!("{}", exchange.total_energy(&state));
+    let mut temp = 3.0;
+    loop {
+        for _ in 0..1000 {
+            state = step(&exchange, &state, temp);
+            println!("{}", exchange.total_energy(&state));
+        }
+        if temp < 0.1 {
+            break
+        }
+        temp -= 0.1;
+        println!("");
     }
 }
