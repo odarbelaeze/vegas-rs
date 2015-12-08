@@ -11,7 +11,7 @@
 /// assert_eq!(0, vegas::util::super_mod(-10, 10));
 /// assert_eq!(9, vegas::util::super_mod(-1, 10));
 /// ```
-pub fn super_mod(num: i64, basis: i64) ->  i64 {
+pub fn super_mod(num: i64, basis: i64) -> i64 {
     let num = num % basis;
     if num < 0 {
         return basis + num

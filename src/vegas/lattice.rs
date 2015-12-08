@@ -28,7 +28,7 @@ impl Lattice {
 
     /// Returns a site in the first image of a lattice according the lattice's
     /// periodicity, returns none if the site is outside the lattice
-    pub fn inside(&self, site: &Site) ->  Option<Site> {
+    pub fn inside(&self, site: &Site) -> Option<Site> {
 
         if !(site.atom < self.natoms) {
             return None
@@ -98,6 +98,12 @@ impl Lattice {
         })
     }
 
+    pub fn nsites(&self) -> usize {
+        self.natoms as usize *
+            self.shape.0 as usize *
+            self.shape.1 as usize *
+            self.shape.2 as usize
+    }
 }
 
 
@@ -170,7 +176,7 @@ impl Iterator for CellIterator {
 
     type Item = (u32, u32, u32);
 
-    fn next(&mut self) ->  Option<(u32, u32, u32)> {
+    fn next(&mut self) -> Option<(u32, u32, u32)> {
         if self.cur == self.max.0 * self.max.1 * self.max.2 {
             return None;
         }
@@ -212,7 +218,7 @@ impl Iterator for SiteIterator {
 
     type Item = Site;
 
-    fn next(&mut self) ->  Option<Site> {
+    fn next(&mut self) -> Option<Site> {
         if self.max_at == 0 {
             return None
         }
@@ -257,7 +263,7 @@ impl Vertex {
         })
     }
 
-    pub fn list_for_cubic() ->  Vec<Vertex> {
+    pub fn list_for_cubic() -> Vec<Vertex> {
         vec![
             Vertex{ source: 0, target: 0, delta: (1, 0, 0) },
             Vertex{ source: 0, target: 0, delta: (0, 1, 0) },
@@ -268,7 +274,7 @@ impl Vertex {
         ]
     }
 
-    pub fn list_for_hcp() ->  Vec<Vertex> {
+    pub fn list_for_hcp() -> Vec<Vertex> {
         vec![
             // Zero in plane
             Vertex { source: 0, target: 0, delta: (1, 0, 0) },
@@ -305,7 +311,7 @@ impl Vertex {
         ]
     }
 
-    pub fn list_for_honeycomb() ->  Vec<Vertex> {
+    pub fn list_for_honeycomb() -> Vec<Vertex> {
         vec![
             Vertex{ source: 0, target: 1, delta: (0, 0, 0) },
             Vertex{ source: 1, target: 0, delta: (0, 0, 0) },
@@ -322,6 +328,41 @@ impl Vertex {
         ]
     }
 }
+
+
+pub struct Adjacency {
+    lims: Vec<usize>,
+    nbhs: Vec<usize>,
+}
+
+
+impl Adjacency {
+    pub fn new(lattice: Lattice) -> Adjacency
+    {
+        let mut lims = vec![0];
+        let mut nbhs = vec![];
+        for site in lattice.sites() {
+            let pnbhs: Vec<usize>  = lattice.targets(&site)
+                .expect("No sites ma frien").iter().map(|site| {
+                    lattice.index(&site).expect("Site outside lattice")
+                }).collect();
+            let last = lims.last().unwrap().clone();
+            lims.push(last + pnbhs.len());
+            nbhs.extend(pnbhs.iter());
+        }
+        Adjacency { lims: lims, nbhs: nbhs, }
+    }
+
+    pub fn nbhs_of<'a>(&'a self, item: usize) -> Option<&'a[usize]> {
+        if item >= self.lims.len() - 1 {
+            return None
+        }
+        let low = self.lims[item] as usize;
+        let hi = self.lims[item + 1] as usize;
+        Some(&self.nbhs[low..hi])
+    }
+}
+
 
 // Tests
 
