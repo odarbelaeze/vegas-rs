@@ -1,10 +1,8 @@
-
 extern crate rand;
-
 use rand::distributions::{IndependentSample, Range};
 
-extern crate vegas;
 
+#[macro_use] extern crate vegas;
 use vegas::lattice::Adjacency;
 use vegas::lattice::LatticeBuilder;
 use vegas::lattice::Vertex;
@@ -12,39 +10,11 @@ use vegas::state::Spin;
 use vegas::state::State;
 use vegas::state::SpinConstructors;
 use vegas::state::StateConstructors;
+use vegas::energy::EnergyComponent;
+use vegas::energy::ExchangeComponent;
 
 
-
-trait EnergyComponent {
-    fn energy(&self, state: &State, index: usize) -> f64;
-    fn total_energy(&self, state: &State) -> f64 {
-        let mut total = 0f64;
-        for i in 0..state.len() {
-            total += self.energy(state, i);
-        }
-        total
-    }
-}
-
-
-struct ExchangeComponent {
-    adjacency: Adjacency,
-}
-
-
-impl EnergyComponent for ExchangeComponent {
-    fn energy(&self, state: &State, index: usize) -> f64 {
-        let mut ene = 0f64;
-        let s = state[index];
-        for nb in self.adjacency.nbhs_of(index).unwrap() {
-            ene -= s * state[*nb];
-        }
-        ene
-    }
-}
-
-
-fn step(energy: &ExchangeComponent, state: &State, temp: f64) -> State {
+fn step<T: EnergyComponent>(energy: &T, state: &State, temp: f64) -> State {
     let mut new_state = (*state).clone();
     let sites = Range::new(0, new_state.len());
     let mut rng = rand::thread_rng();
@@ -69,15 +39,20 @@ fn step(energy: &ExchangeComponent, state: &State, temp: f64) -> State {
 fn main() {
 
     let latt = LatticeBuilder::new()
-        .pbc((true, true, false))
-        .shape((30, 30, 1))
+        .pbc((true, true, true))
+        .shape((10, 10, 10))
         .vertices(Vertex::list_for_cubic())
         .natoms(1)
         .finalize();
 
     let mut state = State::rand(latt.nsites());
-    let exchange = ExchangeComponent { adjacency: Adjacency::new(latt) };
+
+    let exchange = hamiltonian!(
+        ExchangeComponent::new(Adjacency::new(&latt))
+    );
+
     let mut temp = 3.0;
+
     loop {
         for _ in 0..1000 {
             state = step(&exchange, &state, temp);
@@ -89,4 +64,5 @@ fn main() {
         temp -= 0.1;
         println!("");
     }
+
 }

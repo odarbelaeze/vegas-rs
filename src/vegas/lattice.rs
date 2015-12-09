@@ -337,7 +337,7 @@ pub struct Adjacency {
 
 
 impl Adjacency {
-    pub fn new(lattice: Lattice) -> Adjacency
+    pub fn new(lattice: &Lattice) -> Adjacency
     {
         let mut lims = vec![0];
         let mut nbhs = vec![];
