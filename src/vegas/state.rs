@@ -68,3 +68,24 @@ impl StateConstructors for State {
     }
 
 }
+
+pub trait CommonObservables {
+    fn mag(&self) -> (f64, f64, f64);
+    fn mag_len(&self) -> f64 {
+        let (x, y, z) = self.mag();
+        (x * x + y * y + z * z).sqrt()
+    }
+}
+
+impl CommonObservables for State {
+    fn mag(&self) -> (f64, f64, f64) {
+        let (mut x, mut y, mut z) = (0.0f64, 0.0f64, 0.0f64);
+        for item in self.iter() {
+            x += item.x;
+            y += item.y;
+            z += item.z;
+        }
+        (x, y, z)
+    }
+
+}

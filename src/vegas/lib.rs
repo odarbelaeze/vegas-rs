@@ -4,6 +4,7 @@ pub mod util;
 pub mod lattice;
 pub mod state;
 pub mod energy;
+pub mod integrator;
 
 
 #[macro_export]
