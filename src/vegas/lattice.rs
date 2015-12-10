@@ -364,6 +364,47 @@ impl Adjacency {
 }
 
 
+struct Locator {
+    a1: (f64, f64, f64),
+    a2: (f64, f64, f64),
+    a3: (f64, f64, f64),
+    basis: Vec<(f64, f64, f64)>,
+}
+
+
+impl Locator {
+
+    fn locate(&self, site: &Site) -> Option<(f64, f64, f64)> {
+        let at = site.atom as usize;
+        if at >= self.basis.len() {
+            return None
+        }
+        let (bx, by, bz) = self.basis[at];
+        let (cx, cy, cz) = (
+            site.cell.0 as f64,
+            site.cell.1 as f64,
+            site.cell.2 as f64,
+            );
+        let pos = (
+            cx * self.a1.0 + cy * self.a2.0 + cz * self.a3.0 + bx,
+            cx * self.a1.1 + cy * self.a2.1 + cz * self.a3.1 + by,
+            cx * self.a1.2 + cy * self.a2.2 + cz * self.a3.2 + bz
+            );
+        Some(pos)
+    }
+
+    pub fn for_cubic(a: f64) -> Locator {
+        Locator {
+            a1: (a, 0.0f64, 0.0f64),
+            a2: (0.0f64, a, 0.0f64),
+            a3: (0.0f64, 0.0f64, a),
+            basis: vec![(0.0f64, 0.0f64, 0.0f64)],
+        }
+    }
+
+}
+
+
 // Tests
 
 #[test]
