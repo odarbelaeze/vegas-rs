@@ -1,11 +1,25 @@
+//! This little library should have traits and routines to build a generic
+//! atomistic Monte Carlo simulation program to deal with magnetic properties
+//! of materials.
+
 use std::ops::{Mul};
 
 
-trait Spin where
+/// This trait specifies what a spin is for me.
+pub trait Spin where
     for<'a, 'b> &'a Self: Mul<&'b Self, Output = f64>
 {
     fn up() -> Self;
     fn down() -> Self;
+
+    /// This method should return a spin based on an old spin reference
+    ///
+    /// Examples:
+    ///
+    /// ```rust,ignore
+    /// let old = Spin::up();
+    /// let new = Spin::perturbation_of(old);
+    /// ```
     fn perturbation_of(other: &Self) -> Self;
 }
 
@@ -80,6 +94,9 @@ impl<'a, 'b> Mul<&'a HeisenbergSpin> for &'b HeisenbergSpin {
             .fold(0f64, |sum, i| sum + i)
     }
 }
+
+
+// struct State<T: Spin> where  for<'a, 'b> &'a T: Mul<&'b T, Output = f64> (Vec<T>);
 
 
 #[cfg(test)]
