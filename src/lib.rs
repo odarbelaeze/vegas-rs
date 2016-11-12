@@ -4,16 +4,34 @@ use std::ops::{Mul};
 trait Spin where
     for<'a, 'b> &'a Self: Mul<&'b Self, Output = f64>
 {
+    fn up() -> Self;
+    fn down() -> Self;
+    fn perturbation_of(other: &Self) -> Self;
 }
 
 
-enum IsingSpin {
+pub enum IsingSpin {
     Up,
     Down,
 }
 
 
 impl Spin for IsingSpin {
+    fn up() -> IsingSpin {
+        IsingSpin::Up
+    }
+
+    fn down() -> IsingSpin {
+        IsingSpin::Down
+    }
+
+    fn perturbation_of(other: &IsingSpin) -> IsingSpin {
+        use IsingSpin::{Up, Down};
+        match *other {
+            Up => Down,
+            Down => Up,
+        }
+    }
 }
 
 
@@ -23,18 +41,30 @@ impl<'a, 'b> Mul<&'a IsingSpin> for &'b IsingSpin {
     fn mul(self, other: &'a IsingSpin) -> f64 {
         use IsingSpin::{Up, Down};
         match (self, other) {
-            (&Up, &Up) => 1f64,
-            (&Down, &Down) => 1f64,
+            (&Up, &Up) | (&Down, &Down) => 1f64,
             _ => -1f64,
         }
     }
 }
 
 
-struct HeisenbergSpin([f64; 3]);
+pub struct HeisenbergSpin([f64; 3]);
 
 
-impl Spin for HeisenbergSpin {}
+impl Spin for HeisenbergSpin {
+    fn up() -> HeisenbergSpin {
+        HeisenbergSpin([0f64, 0f64, 1f64])
+    }
+
+    fn down() -> HeisenbergSpin {
+        HeisenbergSpin([0f64, 0f64, -1f64])
+    }
+
+    fn perturbation_of(other: &HeisenbergSpin) -> HeisenbergSpin {
+        let &HeisenbergSpin(elems) = other;
+        HeisenbergSpin([ - elems[0], - elems[1], - elems[2], ])
+    }
+}
 
 
 impl<'a, 'b> Mul<&'a HeisenbergSpin> for &'b HeisenbergSpin {
@@ -43,7 +73,11 @@ impl<'a, 'b> Mul<&'a HeisenbergSpin> for &'b HeisenbergSpin {
     fn mul(self, other: &'a HeisenbergSpin) -> f64 {
         let &HeisenbergSpin(_self) = self;
         let &HeisenbergSpin(_other) = other;
-        _self.iter().zip(_other.iter()).map(|(a, b)| a * b).fold(0f64, |sum, i| sum + i)
+        _self
+            .iter()
+            .zip(_other.iter())
+            .map(|(a, b)| a * b)
+            .fold(0f64, |sum, i| sum + i)
     }
 }
 
