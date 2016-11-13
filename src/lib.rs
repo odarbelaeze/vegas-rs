@@ -108,9 +108,8 @@ impl Spin for HeisenbergSpin {
 }
 
 impl PerturbableSpin for HeisenbergSpin {
-    fn perturbation_of(other: &HeisenbergSpin) -> HeisenbergSpin {
-        let &HeisenbergSpin(elems) = other;
-        HeisenbergSpin([-elems[0], -elems[1], -elems[2]])
+    fn perturbation_of(_: &HeisenbergSpin) -> HeisenbergSpin {
+        HeisenbergSpin::rand()
     }
 }
 
@@ -133,7 +132,7 @@ pub struct State<T: Spin>(Vec<T>) where for<'b, 'a> &'a T: std::ops::Mul<&'b T, 
 
 #[cfg(test)]
 mod tests {
-    use super::Spin;
+    use super::{Spin, PerturbableSpin};
     use super::IsingSpin;
     use super::HeisenbergSpin;
 
@@ -165,5 +164,14 @@ mod tests {
             let norm = a.iter().map(|i| i * i).fold(0f64, |s, i| s + i);
             assert!((norm - 1f64).abs() < 1e-15);
         }
+    }
+
+    #[test]
+    fn perturbation_of_heisenberg_spins() {
+        let a = HeisenbergSpin::rand();
+        let b = HeisenbergSpin::perturbation_of(&a);
+        let HeisenbergSpin(aitems) = a;
+        let HeisenbergSpin(bitems) = b;
+        assert!(aitems != bitems);
     }
 }
