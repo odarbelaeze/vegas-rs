@@ -5,7 +5,7 @@
 extern crate rand;
 
 use std::ops::Mul;
-use rand::distributions::{IndependentSample, Normal, Range};
+use rand::distributions::{IndependentSample, Range};
 
 
 /// This trait specifies what a spin is for me.
@@ -91,16 +91,15 @@ impl Spin for HeisenbergSpin {
     }
 
     fn rand() -> HeisenbergSpin {
-        let normal = Normal::new(0.0, 1.0);
-        let mut rng = rand::thread_rng();
-        let x = normal.ind_sample(&mut rng);
-        let y = normal.ind_sample(&mut rng);
-        let z = normal.ind_sample(&mut rng);
-        let n = [x, y, z].iter()
-            .map(|i| i * i)
-            .fold(0f64, |s, i| s + i)
-            .sqrt();
-        HeisenbergSpin([x/n, y/n, z/n])
+        loop {
+            let (a, b) = rand::random::<(f64, f64)>();
+            let sum = a * a + b * b;
+            if sum >= 1f64 { continue; }
+            let dif = (1f64 - a * a - b * b).sqrt();
+            return HeisenbergSpin(
+                [2f64 * a * dif, 2f64 * b * dif, 1f64 - 2f64 * sum]
+                );
+        }
     }
 }
 
@@ -153,5 +152,14 @@ mod tests {
         let HeisenbergSpin(a) = HeisenbergSpin::rand();
         let HeisenbergSpin(b) = HeisenbergSpin::rand();
         assert!(a != b);
+    }
+
+    #[test]
+    fn random_heisenberg_spins_are_unit() {
+        for _ in 0..100 {
+            let HeisenbergSpin(a) = HeisenbergSpin::rand();
+            let norm = a.iter().map(|i| i * i).fold(0f64, |s, i| s + i);
+            assert!((norm - 1f64).abs() < 1e-15);
+        }
     }
 }
