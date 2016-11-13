@@ -130,11 +130,27 @@ impl<'a, 'b> Mul<&'a HeisenbergSpin> for &'b HeisenbergSpin {
 pub struct State<T: Spin>(Vec<T>) where for<'b, 'a> &'a T: std::ops::Mul<&'b T, Output = f64>;
 
 
+impl<T: Spin> State<T> where for<'b, 'a> &'a T: std::ops::Mul<&'b T, Output = f64> {
+    pub fn down_with_size(n: usize) -> State<T> {
+        State::<T>((0..n).map(|_| T::down()).collect())
+    }
+
+    pub fn up_with_size(n: usize) -> State<T> {
+        State::<T>((0..n).map(|_| T::up()).collect())
+    }
+
+    pub fn rand_with_size(n: usize) -> State<T> {
+        State::<T>((0..n).map(|_| T::rand()).collect())
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::{Spin, PerturbableSpin};
     use super::IsingSpin;
     use super::HeisenbergSpin;
+    use super::State;
 
     #[test]
     fn ising_spin_multiplies_correctly() {
@@ -173,5 +189,11 @@ mod tests {
         let HeisenbergSpin(aitems) = a;
         let HeisenbergSpin(bitems) = b;
         assert!(aitems != bitems);
+    }
+
+    #[test]
+    fn lengths_of_states() {
+        let State(items) = State::<HeisenbergSpin>::up_with_size(10);
+        assert_eq!(items.len(), 10);
     }
 }
