@@ -2,12 +2,12 @@
 //! atomistic Monte Carlo simulation program to deal with magnetic properties
 //! of materials.
 
-use std::ops::{Mul};
+use std::ops::Mul;
 
 
 /// This trait specifies what a spin is for me.
-pub trait Spin where
-    for<'a, 'b> &'a Self: Mul<&'b Self, Output = f64>
+pub trait Spin
+    where for<'a, 'b> &'a Self: Mul<&'b Self, Output = f64>
 {
     fn up() -> Self;
     fn down() -> Self;
@@ -76,7 +76,7 @@ impl Spin for HeisenbergSpin {
 
     fn perturbation_of(other: &HeisenbergSpin) -> HeisenbergSpin {
         let &HeisenbergSpin(elems) = other;
-        HeisenbergSpin([ - elems[0], - elems[1], - elems[2], ])
+        HeisenbergSpin([-elems[0], -elems[1], -elems[2]])
     }
 }
 
@@ -87,8 +87,7 @@ impl<'a, 'b> Mul<&'a HeisenbergSpin> for &'b HeisenbergSpin {
     fn mul(self, other: &'a HeisenbergSpin) -> f64 {
         let &HeisenbergSpin(_self) = self;
         let &HeisenbergSpin(_other) = other;
-        _self
-            .iter()
+        _self.iter()
             .zip(_other.iter())
             .map(|(a, b)| a * b)
             .fold(0f64, |sum, i| sum + i)
@@ -96,7 +95,7 @@ impl<'a, 'b> Mul<&'a HeisenbergSpin> for &'b HeisenbergSpin {
 }
 
 
-// struct State<T: Spin> where  for<'a, 'b> &'a T: Mul<&'b T, Output = f64> (Vec<T>);
+pub struct State<T: Spin>(Vec<T>) where for<'b, 'a> &'a T: std::ops::Mul<&'b T, Output = f64>;
 
 
 #[cfg(test)]
@@ -106,14 +105,15 @@ mod tests {
 
     #[test]
     fn ising_spin_multiplies_correctly() {
-        assert_eq!(&IsingSpin::Up  * &IsingSpin::Up, 1.0);
-        assert_eq!(&IsingSpin::Down  * &IsingSpin::Up, -1.0);
+        assert_eq!(&IsingSpin::Up * &IsingSpin::Up, 1.0);
+        assert_eq!(&IsingSpin::Down * &IsingSpin::Up, -1.0);
         assert_eq!(&IsingSpin::Up * &IsingSpin::Down, -1.0);
         assert_eq!(&IsingSpin::Down * &IsingSpin::Down, 1.0);
     }
 
     #[test]
     fn heisemberg_spin_multiplies_correctly() {
-        assert_eq!(&HeisenbergSpin([1.0, 1.0, 1.0]) * &HeisenbergSpin([1.0, 1.0, 1.0]), 3.0);
+        assert_eq!(&HeisenbergSpin([1.0, 1.0, 1.0]) * &HeisenbergSpin([1.0, 1.0, 1.0]),
+                   3.0);
     }
 }
