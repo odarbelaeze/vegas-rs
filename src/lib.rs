@@ -52,7 +52,11 @@ impl Spin for IsingSpin {
         let range = Range::new(0f64, 1f64);
         let mut rng = rand::thread_rng();
         let r = range.ind_sample(&mut rng);
-        if r < 0.5f64 { IsingSpin::Up } else { IsingSpin::Down }
+        if r < 0.5f64 {
+            IsingSpin::Up
+        } else {
+            IsingSpin::Down
+        }
     }
 }
 
@@ -94,11 +98,11 @@ impl Spin for HeisenbergSpin {
         loop {
             let (a, b) = rand::random::<(f64, f64)>();
             let sum = a * a + b * b;
-            if sum >= 1f64 { continue; }
+            if sum >= 1f64 {
+                continue;
+            }
             let dif = (1f64 - a * a - b * b).sqrt();
-            return HeisenbergSpin(
-                [2f64 * a * dif, 2f64 * b * dif, 1f64 - 2f64 * sum]
-                );
+            return HeisenbergSpin([2f64 * a * dif, 2f64 * b * dif, 1f64 - 2f64 * sum]);
         }
     }
 }
