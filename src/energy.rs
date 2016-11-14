@@ -103,6 +103,39 @@ impl<T, U, V> CompoundEnergy<T, U, V>
     }
 }
 
+/// A macro to easily build complex hamiltonians.
+///
+/// Examples:
+///
+/// ```
+/// #[macro_use] extern crate vegas_rs;
+/// use vegas_rs::state::{Spin, HeisenbergSpin};
+/// use vegas_rs::energy::{Gauge, UniaxialAnisotropy};
+/// fn main() {
+///     let _hamiltonian =  hamiltonian!(
+///         UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0),
+///         Gauge::new(1.0)
+///         );
+/// }
+/// ```
+#[macro_export]
+macro_rules! hamiltonian {
+    (@flatten $I: expr,) => (
+        $I
+        );
+    (@flatten $I: expr, $J: expr, $($K:expr,)*) => (
+        hamiltonian!(@flatten hamiltonian!($I, $J), $($K,)*)
+        );
+    ($I: expr) => (
+        $I
+        );
+    ($I: expr, $J: expr) => (
+        $crate::energy::CompoundEnergy::new($I, $J)
+        );
+    ($I: expr, $J: expr, $($K: expr),+) => (
+        hamiltonian!(@flatten hamiltonian!($I, $J), $($K,)+)
+        );
+}
 
 
 #[cfg(test)]
@@ -133,5 +166,13 @@ mod tests {
         let anisotropy = UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0);
         let compound = CompoundEnergy::new(gauge, anisotropy);
         assert!(compound.total_energy(&ups) - 200.0 < 1e-12);
+    }
+
+    #[test]
+    fn lets_try_with_a_macro() {
+        let state = State::<HeisenbergSpin>::up_with_size(10);
+        let hamiltonian = hamiltonian!(UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0),
+                                       Gauge::new(1.0));
+        assert!(hamiltonian.total_energy(&state) - 200.0 < 1e-12);
     }
 }
