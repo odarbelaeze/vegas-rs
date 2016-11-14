@@ -1,11 +1,8 @@
-use std::ops::Mul;
 use std::iter::Iterator;
 use state::{Spin, State};
 
 
-pub trait EnergyComponent<T: Spin>
-    where for<'a, 'b> &'a T: Mul<&'b T, Output = f64>
-{
+pub trait EnergyComponent<T: Spin> {
     /// Get the energy of a given site for a state.
     ///
     /// Panics:

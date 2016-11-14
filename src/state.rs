@@ -4,14 +4,11 @@
 
 extern crate rand;
 
-use std::ops::Mul;
 use rand::distributions::{IndependentSample, Range};
 
 
 /// This trait specifies what a spin is for me.
-pub trait Spin
-    where for<'a, 'b> &'a Self: Mul<&'b Self, Output = f64>
-{
+pub trait Spin {
     /// New up an up Spin, this depends on what you're calling up.
     fn up() -> Self;
 
@@ -21,14 +18,15 @@ pub trait Spin
 
     /// New up a random spin.
     fn rand() -> Self;
+
+    /// Interact with another spin
+    fn interact(&self, other: &Self) -> f64;
 }
 
 
 /// This trait represents a spin which can be created as a perturbation of
 /// another, useful for things like a Metropolis algorithm.
-pub trait PerturbableSpin: Spin
-    where for<'a, 'b> &'a Self: Mul<&'b Self, Output = f64>
-{
+pub trait PerturbableSpin: Spin {
     /// New up a spin which is the perturbation of other.
     fn perturbation_of(other: &Self) -> Self;
 }
@@ -59,6 +57,14 @@ impl Spin for IsingSpin {
             IsingSpin::Down
         }
     }
+
+    fn interact(&self, other: &IsingSpin) -> f64 {
+        use self::IsingSpin::{Up, Down};
+        match (self, other) {
+            (&Up, &Up) | (&Down, &Down) => 1f64,
+            _ => -1f64,
+        }
+    }
 }
 
 impl PerturbableSpin for IsingSpin {
@@ -67,18 +73,6 @@ impl PerturbableSpin for IsingSpin {
         match *other {
             Up => Down,
             Down => Up,
-        }
-    }
-}
-
-impl<'a, 'b> Mul<&'a IsingSpin> for &'b IsingSpin {
-    type Output = f64;
-
-    fn mul(self, other: &'a IsingSpin) -> f64 {
-        use self::IsingSpin::{Up, Down};
-        match (self, other) {
-            (&Up, &Up) | (&Down, &Down) => 1f64,
-            _ => -1f64,
         }
     }
 }
@@ -108,18 +102,8 @@ impl Spin for HeisenbergSpin {
             return HeisenbergSpin([2f64 * a * dif, 2f64 * b * dif, 1f64 - 2f64 * sum]);
         }
     }
-}
 
-impl PerturbableSpin for HeisenbergSpin {
-    fn perturbation_of(_: &HeisenbergSpin) -> HeisenbergSpin {
-        HeisenbergSpin::rand()
-    }
-}
-
-impl<'a, 'b> Mul<&'a HeisenbergSpin> for &'b HeisenbergSpin {
-    type Output = f64;
-
-    fn mul(self, other: &'a HeisenbergSpin) -> f64 {
+    fn interact(&self, other: &HeisenbergSpin) -> f64 {
         let &HeisenbergSpin(_self) = self;
         let &HeisenbergSpin(_other) = other;
         _self.iter()
@@ -129,11 +113,16 @@ impl<'a, 'b> Mul<&'a HeisenbergSpin> for &'b HeisenbergSpin {
     }
 }
 
+impl PerturbableSpin for HeisenbergSpin {
+    fn perturbation_of(_: &HeisenbergSpin) -> HeisenbergSpin {
+        HeisenbergSpin::rand()
+    }
+}
 
-pub struct State<T: Spin>(Vec<T>) where for<'b, 'a> &'a T: Mul<&'b T, Output = f64>;
 
+pub struct State<T: Spin>(Vec<T>);
 
-impl<T: Spin> State<T> where for<'b, 'a> &'a T: Mul<&'b T, Output = f64> {
+impl<T: Spin> State<T> {
     pub fn down_with_size(n: usize) -> State<T> {
         State::<T>((0..n).map(|_| T::down()).collect())
     }
@@ -160,18 +149,31 @@ mod tests {
     use super::HeisenbergSpin;
     use super::State;
 
+    fn real_close(a: f64, b: f64) {
+        assert!((a - b).abs() < 1e-15);
+    }
+
     #[test]
     fn ising_spin_multiplies_correctly() {
-        assert_eq!(&IsingSpin::Up * &IsingSpin::Up, 1.0);
-        assert_eq!(&IsingSpin::Down * &IsingSpin::Up, -1.0);
-        assert_eq!(&IsingSpin::Up * &IsingSpin::Down, -1.0);
-        assert_eq!(&IsingSpin::Down * &IsingSpin::Down, 1.0);
+        let up = IsingSpin::up();
+        let down = IsingSpin::down();
+        let rand = IsingSpin::rand();
+        real_close(up.interact(&up), 1.0);
+        real_close(up.interact(&down), -1.0);
+        real_close(down.interact(&up), -1.0);
+        real_close(down.interact(&down), 1.0);
+        real_close(rand.interact(&rand), 1.0);
+        real_close(rand.interact(&up) + rand.interact(&down), 0.0);
     }
 
     #[test]
     fn heisemberg_spin_multiplies_correctly() {
-        assert_eq!(&HeisenbergSpin([1.0, 1.0, 1.0]) * &HeisenbergSpin([1.0, 1.0, 1.0]),
-                   3.0);
+        let up = HeisenbergSpin::up();
+        let down = HeisenbergSpin::down();
+        let rand = HeisenbergSpin::rand();
+        real_close(up.interact(&up), 1.0);
+        real_close(up.interact(&down), -1.0);
+        real_close(rand.interact(&rand), 1.0);
     }
 
     #[test]
@@ -186,7 +188,7 @@ mod tests {
         for _ in 0..100 {
             let HeisenbergSpin(a) = HeisenbergSpin::rand();
             let norm = a.iter().map(|i| i * i).fold(0f64, |s, i| s + i);
-            assert!((norm - 1f64).abs() < 1e-15);
+            real_close(norm, 1.0);
         }
     }
 
