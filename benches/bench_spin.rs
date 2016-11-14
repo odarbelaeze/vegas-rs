@@ -2,7 +2,7 @@
 extern crate vegas_rs;
 extern crate test;
 
-use vegas_rs::{Spin, IsingSpin, HeisenbergSpin};
+use vegas_rs::state::{Spin, IsingSpin, HeisenbergSpin};
 
 
 #[bench]
