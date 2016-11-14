@@ -139,6 +139,10 @@ impl<T: Spin> State<T> {
         let &State::<T>(ref items) = self;
         items
     }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
 
