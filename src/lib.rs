@@ -4,4 +4,3 @@ extern crate rand;
 
 pub mod state;
 pub mod energy;
-pub mod lattice;
