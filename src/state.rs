@@ -32,6 +32,7 @@ pub trait PerturbableSpin: Spin {
 }
 
 
+#[derive(Clone)]
 pub enum IsingSpin {
     Up,
     Down,
@@ -78,6 +79,7 @@ impl PerturbableSpin for IsingSpin {
 }
 
 
+#[derive(Clone)]
 pub struct HeisenbergSpin([f64; 3]);
 
 impl Spin for HeisenbergSpin {
@@ -120,6 +122,7 @@ impl PerturbableSpin for HeisenbergSpin {
 }
 
 
+#[derive(Clone)]
 pub struct State<T: Spin>(Vec<T>);
 
 impl<T: Spin> State<T> {
@@ -138,6 +141,14 @@ impl<T: Spin> State<T> {
     pub fn spins(&self) -> &Vec<T> {
         let &State::<T>(ref items) = self;
         items
+    }
+
+    pub fn at<'a>(&'a self, index: usize) -> &'a T {
+        &self.spins()[index]
+    }
+
+    pub fn set_at(&mut self, index: usize, spin: T)  {
+        self.0[index] = spin;
     }
 
     pub fn len(&self) -> usize {
