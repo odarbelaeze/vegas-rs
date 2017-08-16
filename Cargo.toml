@@ -1,17 +1,13 @@
 [package]
 name = "vegas-rs"
-version = "0.1.0"
-authors = ["Oscar David Arbeláez Echeverri <odarbelaeze@gmail.com>"]
-description = "Atomistic magnetic system simulation in rust"
-license = "GPL-3.0"
-
-[lib]
-name = "vegas"
-path = "src/vegas/lib.rs"
-
-[[bin]]
-name = "vegas"
-path = "src/bin/main.rs"
+version = "0.0.1"
+authors = ["Oscar Arbelaeze <@odarbelaeze>"]
+description = "Little Monte Carlo code in rust"
+keywords = ["Monte Carlo", "MCMC", "physics"]
+readme = "README.md"
+repository = "https://github.com/odarbelaeze/vegas-rs"
+documentation = "https://github.com/odarbelaeze/vegas-rs"
+license = "MIT"
 
 [dependencies]
 rand = "0.3"

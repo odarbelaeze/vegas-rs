@@ -1,15 +1,12 @@
 extern crate rand;
 use rand::distributions::{IndependentSample, Range};
 
-use state::Spin;
-use state::State;
-use state::SpinConstructors;
-use state::StateConstructors;
+use state::{Spin, State};
 use energy::EnergyComponent;
 
 
-pub trait Integrator<T: EnergyComponent> {
-    fn step(&self, energy: &T, state: &State) -> State;
+pub trait Integrator<S: Spin, T: EnergyComponent<S>> {
+    fn step(&self, energy: &T, state: &State<S>) -> State<S>;
 }
 
 
@@ -37,15 +34,18 @@ impl MetropolisIntegrator {
 }
 
 
-impl<T: EnergyComponent> Integrator<T> for MetropolisIntegrator {
-    fn step(&self, energy: &T, state: &State) -> State {
+impl<S, T> Integrator<S, T> for MetropolisIntegrator where
+    S: Spin + Clone,
+    T: EnergyComponent<S>
+{
+    fn step(&self, energy: &T, state: &State<S>) -> State<S> {
         let mut new_state = (*state).clone();
         let sites = Range::new(0, new_state.len());
         let mut rng = rand::thread_rng();
         for _ in 0..new_state.len() {
             let site = sites.ind_sample(&mut rng);
             let old_energy = energy.energy(&new_state, site);
-            new_state[site] = Spin::rand();
+            new_state.set_at(site, Spin::rand());
             let new_energy = energy.energy(&new_state, site);
             let delta = new_energy - old_energy;
             if delta < 0.0 {
@@ -54,7 +54,7 @@ impl<T: EnergyComponent> Integrator<T> for MetropolisIntegrator {
             if rand::random::<f64>() < (- delta / self.temp).exp() {
                 continue
             }
-            new_state[site] = state[site];
+            new_state.set_at(site, state.at(site).clone());
         }
         new_state
     }
