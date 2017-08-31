@@ -2,18 +2,18 @@
 
 use vegas_rs::state::{State, HeisenbergSpin};
 use vegas_rs::energy::{EnergyComponent, Gauge};
-use vegas_rs::integrator::{Integrator, MetropolisIntegrator};
+use vegas_rs::integrator::{Integrator, StateGenerator, MetropolisIntegrator};
 
 
 pub fn main() {
 
-    let mut state: State<HeisenbergSpin> = State::rand_with_size(100);
 
     let hamiltonian = hamiltonian!(
         Gauge::new(10.0)
     );
 
     let mut integrator = MetropolisIntegrator::new(3.0);
+    let mut state: State<HeisenbergSpin> = integrator.state(100);
 
     loop {
         let steps = 1000;
