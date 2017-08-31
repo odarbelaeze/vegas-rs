@@ -11,6 +11,10 @@ pub trait Integrator<S: Spin, T: EnergyComponent<S>> {
     fn step(&mut self, energy: &T, state: &State<S>) -> State<S>;
 }
 
+pub trait StateGenerator<S: Spin> {
+    fn state(&mut self, nsites: usize) -> State<S>;
+}
+
 
 pub struct MetropolisIntegrator {
     rng: XorShiftRng,
@@ -50,7 +54,7 @@ impl<S, T> Integrator<S, T> for MetropolisIntegrator where
         for _ in 0..new_state.len() {
             let site = sites.ind_sample(&mut self.rng);
             let old_energy = energy.energy(&new_state, site);
-            new_state.set_at(site, Spin::rand());
+            new_state.set_at(site, Spin::rand(&mut self.rng));
             let new_energy = energy.energy(&new_state, site);
             let delta = new_energy - old_energy;
             if delta < 0.0 {
@@ -62,5 +66,13 @@ impl<S, T> Integrator<S, T> for MetropolisIntegrator where
             new_state.set_at(site, state.at(site).clone());
         }
         new_state
+    }
+}
+
+impl<S> StateGenerator<S> for MetropolisIntegrator where
+    S: Spin + Clone,
+{
+    fn state(&mut self, nsites: usize) -> State<S> {
+        State::rand_with_size(nsites, &mut self.rng)
     }
 }
