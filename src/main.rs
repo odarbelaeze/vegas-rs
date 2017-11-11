@@ -1,6 +1,7 @@
 #[macro_use] extern crate vegas_rs;
 extern crate docopt;
 extern crate vegas_lattice;
+extern crate sprs;
 
 
 use std::error::Error;
@@ -8,6 +9,7 @@ use std::fs::File;
 use std::io::Read;
 
 use docopt::Docopt;
+use sprs::TriMat;
 use vegas_lattice::Lattice;
 
 use vegas_rs::state::{State, HeisenbergSpin};
@@ -60,8 +62,15 @@ fn read(input: &str) -> Result<(), Box<Error>> {
     let mut data = String::new();
     let mut file = File::open(input)?;
     file.read_to_string(&mut data)?;
-    let _lattice: Lattice = data.parse()?;
+    let lattice: Lattice = data.parse()?;
     println!("Successfuly read the lattice!");
+    let mut mat = TriMat::new((lattice.sites().len(), lattice.sites().len()));
+    for vertex in lattice.vertices() {
+        println!("{:?}", vertex);
+        mat.add_triplet(vertex.source(), vertex.target(), 1.0);
+    }
+    
+    println!("{:?}", mat);
     Ok(())
 }
 
