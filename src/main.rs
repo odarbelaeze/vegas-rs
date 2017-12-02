@@ -13,7 +13,7 @@ use sprs::TriMat;
 use vegas_lattice::Lattice;
 
 use vegas_rs::state::{State, HeisenbergSpin};
-use vegas_rs::energy::{EnergyComponent, Gauge};
+use vegas_rs::energy::{EnergyComponent, Gauge, ExchangeEnergy};
 use vegas_rs::integrator::{Integrator, StateGenerator, MetropolisIntegrator};
 
 
@@ -22,7 +22,7 @@ Vegas rust.
 
 Usage:
   vegas bench
-  vegas read <lattice>
+  vegas lattice <lattice>
   vegas (-h | --help)
   vegas --version
 
@@ -58,14 +58,16 @@ fn bench() {
 }
 
 
-fn read(input: &str) -> Result<(), Box<Error>> {
+fn bench_lattice(input: &str) -> Result<(), Box<Error>> {
     let mut data = String::new();
     let mut file = File::open(input)?;
     file.read_to_string(&mut data)?;
     let lattice: Lattice = data.parse()?;
-    println!("Successfuly read the lattice!");
+    println!("# Successfuly read the lattice!");
 
-    let mut mat = TriMat::new((lattice.sites().len(), lattice.sites().len()));
+    let nsites = lattice.sites().len();
+
+    let mut mat = TriMat::new((nsites, nsites));
     for vertex in lattice.vertices() {
         if vertex.source() <= vertex.target() {
             mat.add_triplet(vertex.source(), vertex.target(), 1.0);
@@ -73,10 +75,29 @@ fn read(input: &str) -> Result<(), Box<Error>> {
         }
     }
 
-    println!("{:?}", mat);
-
     let csr = mat.to_csr();
-    println!("{:?}", csr);
+
+    println!("# Simulating with {} sites", nsites);
+    println!("# Simulating with {} exchanges", lattice.vertices().len());
+
+    let hamiltonian = hamiltonian!(
+        ExchangeEnergy::new(csr)
+    );
+
+    let mut integrator = MetropolisIntegrator::new(5.0);
+    let mut state: State<HeisenbergSpin> = integrator.state(nsites);
+
+    loop {
+        let steps = 1000;
+        let mut energy_sum = 0.0;
+        for _ in 0..steps {
+            state = integrator.step(&hamiltonian, &state);
+            energy_sum += hamiltonian.total_energy(&state)
+        }
+        println!("{} {}", integrator.temp(), energy_sum / steps as f64);
+        if integrator.temp() < 0.1 { break }
+        integrator.cool(0.1);
+    }
 
     Ok(())
 }
@@ -104,7 +125,7 @@ pub fn main() {
         .unwrap_or_else(|e| e.exit());
     if args.get_bool("bench") {
         bench()
-    } else if args.get_bool("read") {
-        check_error(read(args.get_str("<lattice>")))
+    } else if args.get_bool("lattice") {
+        check_error(bench_lattice(args.get_str("<lattice>")))
     }
 }
