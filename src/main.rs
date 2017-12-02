@@ -64,13 +64,20 @@ fn read(input: &str) -> Result<(), Box<Error>> {
     file.read_to_string(&mut data)?;
     let lattice: Lattice = data.parse()?;
     println!("Successfuly read the lattice!");
+
     let mut mat = TriMat::new((lattice.sites().len(), lattice.sites().len()));
     for vertex in lattice.vertices() {
-        println!("{:?}", vertex);
-        mat.add_triplet(vertex.source(), vertex.target(), 1.0);
+        if vertex.source() <= vertex.target() {
+            mat.add_triplet(vertex.source(), vertex.target(), 1.0);
+            mat.add_triplet(vertex.target(), vertex.source(), 1.0);
+        }
     }
-    
+
     println!("{:?}", mat);
+
+    let csr = mat.to_csr();
+    println!("{:?}", csr);
+
     Ok(())
 }
 
