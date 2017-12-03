@@ -36,14 +36,9 @@ Vegas rust, version: 0.1.0
 ";
 
 
-fn bench() {
-    let hamiltonian = hamiltonian!(
-        Gauge::new(10.0)
-    );
-
+fn cool_down<T: EnergyComponent<HeisenbergSpin>>(hamiltonian: T, len: usize) {
     let mut integrator = MetropolisIntegrator::new(3.0);
-    let mut state: State<HeisenbergSpin> = integrator.state(100);
-
+    let mut state: State<HeisenbergSpin> = integrator.state(len);
     loop {
         let steps = 1000;
         let mut energy_sum = 0.0;
@@ -55,6 +50,15 @@ fn bench() {
         if integrator.temp() < 0.1 { break }
         integrator.cool(0.1);
     }
+}
+
+
+
+fn bench() {
+    let hamiltonian = hamiltonian!(
+        Gauge::new(10.0)
+    );
+    cool_down(hamiltonian, 100);
 }
 
 
@@ -84,21 +88,7 @@ fn bench_lattice(input: &str) -> Result<(), Box<Error>> {
         ExchangeEnergy::new(csr)
     );
 
-    let mut integrator = MetropolisIntegrator::new(5.0);
-    let mut state: State<HeisenbergSpin> = integrator.state(nsites);
-
-    loop {
-        let steps = 1000;
-        let mut energy_sum = 0.0;
-        for _ in 0..steps {
-            state = integrator.step(&hamiltonian, &state);
-            energy_sum += hamiltonian.total_energy(&state)
-        }
-        println!("{} {}", integrator.temp(), energy_sum / steps as f64);
-        if integrator.temp() < 0.1 { break }
-        integrator.cool(0.1);
-    }
-
+    cool_down(hamiltonian, nsites);
     Ok(())
 }
 
