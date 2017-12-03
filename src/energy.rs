@@ -1,3 +1,4 @@
+use sprs::CsMat;
 use std::iter::Iterator;
 use std::marker::PhantomData;
 use state::{Spin, State};
@@ -67,6 +68,42 @@ impl<T: Spin> EnergyComponent<T> for UniaxialAnisotropy<T> {
             .fold(0f64, |s, i| s + i)
     }
 }
+
+
+pub struct ExchangeEnergy {
+    exchange: CsMat<f64>,
+}
+
+
+impl ExchangeEnergy {
+    pub fn new(exc: CsMat<f64>) -> Self {
+        Self { exchange: exc }
+    }
+}
+
+
+impl<T: Spin> EnergyComponent<T> for ExchangeEnergy {
+    fn energy(&self, state: &State<T>, index: usize) -> f64 {
+        debug_assert!(index < state.len());
+        let site = state.at(index);
+        if let Some(row) = self.exchange.outer_view(index) {
+            row.iter()
+            .map(|(nbi, exc)| (state.at(nbi), exc))
+            .map(|(nb, exc)| - exc * site.interact(&nb))
+            .fold(0f64, |s, i| s + i)
+        } else {
+            // Just retun 0.0 for out of ranges.
+            0.0
+        }
+    }
+
+    fn total_energy(&self, state: &State<T>) -> f64 {
+        (0..state.len())
+            .map(|i| self.energy(state, i))
+            .fold(0f64, |s, i| s + i) / 2.0
+    }
+}
+
 
 
 pub struct CompoundEnergy<T, U, V>
