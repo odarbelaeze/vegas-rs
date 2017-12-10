@@ -40,16 +40,16 @@ pub enum IsingSpin {
 }
 
 impl Spin for IsingSpin {
-    fn up() -> IsingSpin {
+    fn up() -> Self {
         IsingSpin::Up
     }
 
-    fn down() -> IsingSpin {
+    fn down() -> Self {
         IsingSpin::Down
     }
 
     /// Randomly pick up or down for an Ising spin.
-    fn rand<T: Rng>(rng: &mut T) -> IsingSpin {
+    fn rand<T: Rng>(rng: &mut T) -> Self {
         let range = Range::new(0f64, 1f64);
         let r = range.ind_sample(rng);
         if r < 0.5f64 {
@@ -59,7 +59,7 @@ impl Spin for IsingSpin {
         }
     }
 
-    fn interact(&self, other: &IsingSpin) -> f64 {
+    fn interact(&self, other: &Self) -> f64 {
         use self::IsingSpin::{Up, Down};
         match (self, other) {
             (&Up, &Up) | (&Down, &Down) => 1f64,
@@ -69,7 +69,7 @@ impl Spin for IsingSpin {
 }
 
 impl PerturbableSpin for IsingSpin {
-    fn perturbation_of<T>(other: &IsingSpin, _: &mut T) -> IsingSpin {
+    fn perturbation_of<T>(other: &Self, _: &mut T) -> Self {
         use self::IsingSpin::{Up, Down};
         match *other {
             Up => Down,
@@ -83,17 +83,17 @@ impl PerturbableSpin for IsingSpin {
 pub struct HeisenbergSpin([f64; 3]);
 
 impl Spin for HeisenbergSpin {
-    fn up() -> HeisenbergSpin {
+    fn up() -> Self {
         HeisenbergSpin([0f64, 0f64, 1f64])
     }
 
-    fn down() -> HeisenbergSpin {
+    fn down() -> Self {
         HeisenbergSpin([0f64, 0f64, -1f64])
     }
 
     /// Gerate a random Heisenberg spin using the Marsaglia method for sphere
     /// point picking.
-    fn rand<T: Rng>(rng: &mut T) -> HeisenbergSpin {
+    fn rand<T: Rng>(rng: &mut T) -> Self {
         loop {
             let (a, b) = rng.gen::<(f64, f64)>();
             let sum = a * a + b * b;
@@ -105,7 +105,7 @@ impl Spin for HeisenbergSpin {
         }
     }
 
-    fn interact(&self, other: &HeisenbergSpin) -> f64 {
+    fn interact(&self, other: &Self) -> f64 {
         let &HeisenbergSpin(_self) = self;
         let &HeisenbergSpin(_other) = other;
         _self.iter()
@@ -116,8 +116,8 @@ impl Spin for HeisenbergSpin {
 }
 
 impl PerturbableSpin for HeisenbergSpin {
-    fn perturbation_of<R: Rng>(_: &HeisenbergSpin, rng: &mut R) -> HeisenbergSpin {
-        HeisenbergSpin::rand(rng)
+    fn perturbation_of<R: Rng>(_: &Self, rng: &mut R) -> Self {
+        Self::rand(rng)
     }
 }
 
@@ -126,15 +126,15 @@ impl PerturbableSpin for HeisenbergSpin {
 pub struct State<T: Spin>(Vec<T>);
 
 impl<T: Spin> State<T> {
-    pub fn down_with_size(n: usize) -> State<T> {
+    pub fn down_with_size(n: usize) -> Self {
         State::<T>((0..n).map(|_| T::down()).collect())
     }
 
-    pub fn up_with_size(n: usize) -> State<T> {
+    pub fn up_with_size(n: usize) -> Self {
         State::<T>((0..n).map(|_| T::up()).collect())
     }
 
-    pub fn rand_with_size<R: Rng>(n: usize, rng: &mut R) -> State<T> {
+    pub fn rand_with_size<R: Rng>(n: usize, rng: &mut R) -> Self {
         State::<T>((0..n).map(|_| T::rand(rng)).collect())
     }
 
