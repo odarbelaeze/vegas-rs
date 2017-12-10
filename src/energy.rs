@@ -27,8 +27,8 @@ pub struct Gauge {
 
 
 impl Gauge {
-    pub fn new(val: f64) -> Gauge {
-        Gauge { value: val }
+    pub fn new(val: f64) -> Self {
+        Self { value: val }
     }
 }
 
@@ -47,8 +47,8 @@ pub struct UniaxialAnisotropy<T: Spin> {
 }
 
 impl<T: Spin> UniaxialAnisotropy<T> {
-    pub fn new(s: T, k: f64) -> UniaxialAnisotropy<T> {
-        UniaxialAnisotropy {
+    pub fn new(s: T, k: f64) -> Self {
+        Self {
             reference: s,
             strength: k,
         }
@@ -152,8 +152,8 @@ impl<T, U, V> CompoundEnergy<T, U, V>
           U: EnergyComponent<T>,
           V: EnergyComponent<T>
 {
-    pub fn new(a: U, b: V) -> CompoundEnergy<T, U, V> {
-        CompoundEnergy {
+    pub fn new(a: U, b: V) -> Self {
+        Self {
             a: a,
             b: b,
             phantom: PhantomData,
