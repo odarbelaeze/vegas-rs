@@ -23,8 +23,8 @@ pub struct MetropolisIntegrator {
 
 
 impl MetropolisIntegrator {
-    pub fn new(temp: f64) -> MetropolisIntegrator {
-        MetropolisIntegrator {
+    pub fn new(temp: f64) -> Self {
+        Self {
             temp: temp,
             rng: XorShiftRng::new_unseeded(),
         }
