@@ -70,6 +70,37 @@ impl<T: Spin> EnergyComponent<T> for UniaxialAnisotropy<T> {
 }
 
 
+pub struct ZeemanEnergy<T: Spin> {
+    reference: T,
+    strength: f64,
+}
+
+
+impl<T: Spin> ZeemanEnergy<T> {
+    pub fn new(s: T, h: f64) -> Self {
+        Self {
+            reference: s,
+            strength: h,
+        }
+    }
+}
+
+
+impl<T: Spin> EnergyComponent<T> for ZeemanEnergy<T> {
+    fn energy(&self, state: &State<T>, index: usize) -> f64 {
+        debug_assert!(index < state.len());
+        - state.spins()[index].interact(&self.reference) * self.strength
+    }
+
+    fn total_energy(&self, state: &State<T>) -> f64 {
+        - state.spins()
+            .iter()
+            .map(|s| s.interact(&self.reference))
+            .fold(0f64, |s, i| s + i)
+    }
+}
+
+
 pub struct ExchangeEnergy {
     exchange: CsMat<f64>,
 }
@@ -116,16 +147,6 @@ pub struct CompoundEnergy<T, U, V>
     phantom: PhantomData<T>,
 }
 
-impl<T, U, V> EnergyComponent<T> for CompoundEnergy<T, U, V>
-    where T: Spin,
-          U: EnergyComponent<T>,
-          V: EnergyComponent<T>
-{
-    fn energy(&self, state: &State<T>, index: usize) -> f64 {
-        self.a.energy(&state, index) + self.b.energy(&state, index)
-    }
-}
-
 impl<T, U, V> CompoundEnergy<T, U, V>
     where T: Spin,
           U: EnergyComponent<T>,
@@ -137,6 +158,16 @@ impl<T, U, V> CompoundEnergy<T, U, V>
             b: b,
             phantom: PhantomData,
         }
+    }
+}
+
+impl<T, U, V> EnergyComponent<T> for CompoundEnergy<T, U, V>
+    where T: Spin,
+          U: EnergyComponent<T>,
+          V: EnergyComponent<T>
+{
+    fn energy(&self, state: &State<T>, index: usize) -> f64 {
+        self.a.energy(&state, index) + self.b.energy(&state, index)
     }
 }
 
@@ -177,7 +208,13 @@ macro_rules! hamiltonian {
 
 #[cfg(test)]
 mod tests {
-    use super::{EnergyComponent, Gauge, UniaxialAnisotropy, CompoundEnergy};
+    use super::{
+        EnergyComponent,
+        Gauge,
+        UniaxialAnisotropy,
+        ZeemanEnergy,
+        CompoundEnergy
+    };
     use state::{Spin, State, HeisenbergSpin};
 
     #[test]
@@ -194,6 +231,15 @@ mod tests {
         let anisotropy = UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0);
         assert!(anisotropy.total_energy(&ups) - 100.0 < 1e-12);
         assert!(anisotropy.total_energy(&downs) - 100.0 < 1e-12)
+    }
+
+    #[test]
+    fn test_zeeman_energy() {
+        let ups = State::<HeisenbergSpin>::up_with_size(10);
+        let downs = State::<HeisenbergSpin>::down_with_size(10);
+        let anisotropy = ZeemanEnergy::new(HeisenbergSpin::up(), 1.0);
+        assert!(anisotropy.total_energy(&ups) + 10.0 < 1e-12);
+        assert!(anisotropy.total_energy(&downs) - 10.0 < 1e-12)
     }
 
     #[test]
