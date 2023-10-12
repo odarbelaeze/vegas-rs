@@ -4,9 +4,8 @@
 
 extern crate rand;
 
-use rand::Rng;
 use rand::distributions::{IndependentSample, Range};
-
+use rand::Rng;
 
 /// This trait specifies what a spin is for me.
 pub trait Spin {
@@ -24,14 +23,12 @@ pub trait Spin {
     fn interact(&self, other: &Self) -> f64;
 }
 
-
 /// This trait represents a spin which can be created as a perturbation of
 /// another, useful for things like a Metropolis algorithm.
 pub trait PerturbableSpin: Spin {
     /// New up a spin which is the perturbation of other.
     fn perturbation_of<R: Rng>(other: &Self, rng: &mut R) -> Self;
 }
-
 
 #[derive(Clone)]
 pub enum IsingSpin {
@@ -60,7 +57,7 @@ impl Spin for IsingSpin {
     }
 
     fn interact(&self, other: &Self) -> f64 {
-        use self::IsingSpin::{Up, Down};
+        use self::IsingSpin::{Down, Up};
         match (self, other) {
             (&Up, &Up) | (&Down, &Down) => 1f64,
             _ => -1f64,
@@ -70,14 +67,13 @@ impl Spin for IsingSpin {
 
 impl PerturbableSpin for IsingSpin {
     fn perturbation_of<T>(other: &Self, _: &mut T) -> Self {
-        use self::IsingSpin::{Up, Down};
+        use self::IsingSpin::{Down, Up};
         match *other {
             Up => Down,
             Down => Up,
         }
     }
 }
-
 
 #[derive(Clone)]
 pub struct HeisenbergSpin([f64; 3]);
@@ -108,7 +104,8 @@ impl Spin for HeisenbergSpin {
     fn interact(&self, other: &Self) -> f64 {
         let &HeisenbergSpin(_self) = self;
         let &HeisenbergSpin(_other) = other;
-        _self.iter()
+        _self
+            .iter()
             .zip(_other.iter())
             .map(|(a, b)| a * b)
             .fold(0f64, |sum, i| sum + i)
@@ -120,7 +117,6 @@ impl PerturbableSpin for HeisenbergSpin {
         Self::rand(rng)
     }
 }
-
 
 #[derive(Clone)]
 pub struct State<T: Spin>(Vec<T>);
@@ -147,7 +143,7 @@ impl<T: Spin> State<T> {
         &self.spins()[index]
     }
 
-    pub fn set_at(&mut self, index: usize, spin: T)  {
+    pub fn set_at(&mut self, index: usize, spin: T) {
         self.0[index] = spin;
     }
 
@@ -156,13 +152,12 @@ impl<T: Spin> State<T> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::{Spin, PerturbableSpin};
-    use super::IsingSpin;
     use super::HeisenbergSpin;
+    use super::IsingSpin;
     use super::State;
+    use super::{PerturbableSpin, Spin};
     use rand::thread_rng;
 
     fn real_close(a: f64, b: f64) {

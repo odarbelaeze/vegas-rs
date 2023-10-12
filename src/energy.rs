@@ -1,8 +1,7 @@
 use sprs::CsMat;
+use state::{Spin, State};
 use std::iter::Iterator;
 use std::marker::PhantomData;
-use state::{Spin, State};
-
 
 pub trait EnergyComponent<T: Spin> {
     /// Get the energy of a given site for a state.
@@ -20,11 +19,9 @@ pub trait EnergyComponent<T: Spin> {
     }
 }
 
-
 pub struct Gauge {
     value: f64,
 }
-
 
 impl Gauge {
     pub fn new(val: f64) -> Self {
@@ -32,14 +29,12 @@ impl Gauge {
     }
 }
 
-
 impl<T: Spin> EnergyComponent<T> for Gauge {
     fn energy(&self, state: &State<T>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         self.value
     }
 }
-
 
 pub struct UniaxialAnisotropy<T: Spin> {
     reference: T,
@@ -62,19 +57,18 @@ impl<T: Spin> EnergyComponent<T> for UniaxialAnisotropy<T> {
     }
 
     fn total_energy(&self, state: &State<T>) -> f64 {
-        state.spins()
+        state
+            .spins()
             .iter()
             .map(|s| s.interact(&self.reference).powi(2))
             .fold(0f64, |s, i| s + i)
     }
 }
 
-
 pub struct ZeemanEnergy<T: Spin> {
     reference: T,
     strength: f64,
 }
-
 
 impl<T: Spin> ZeemanEnergy<T> {
     pub fn new(s: T, h: f64) -> Self {
@@ -85,26 +79,24 @@ impl<T: Spin> ZeemanEnergy<T> {
     }
 }
 
-
 impl<T: Spin> EnergyComponent<T> for ZeemanEnergy<T> {
     fn energy(&self, state: &State<T>, index: usize) -> f64 {
         debug_assert!(index < state.len());
-        - state.spins()[index].interact(&self.reference) * self.strength
+        -state.spins()[index].interact(&self.reference) * self.strength
     }
 
     fn total_energy(&self, state: &State<T>) -> f64 {
-        - state.spins()
+        -state
+            .spins()
             .iter()
             .map(|s| s.interact(&self.reference))
             .fold(0f64, |s, i| s + i)
     }
 }
 
-
 pub struct ExchangeEnergy {
     exchange: CsMat<f64>,
 }
-
 
 impl ExchangeEnergy {
     pub fn new(exc: CsMat<f64>) -> Self {
@@ -112,16 +104,15 @@ impl ExchangeEnergy {
     }
 }
 
-
 impl<T: Spin> EnergyComponent<T> for ExchangeEnergy {
     fn energy(&self, state: &State<T>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         let site = state.at(index);
         if let Some(row) = self.exchange.outer_view(index) {
             row.iter()
-            .map(|(nbi, exc)| (state.at(nbi), exc))
-            .map(|(nb, exc)| - exc * site.interact(&nb))
-            .fold(0f64, |s, i| s + i)
+                .map(|(nbi, exc)| (state.at(nbi), exc))
+                .map(|(nb, exc)| -exc * site.interact(&nb))
+                .fold(0f64, |s, i| s + i)
         } else {
             // Just retun 0.0 for out of ranges.
             0.0
@@ -131,16 +122,16 @@ impl<T: Spin> EnergyComponent<T> for ExchangeEnergy {
     fn total_energy(&self, state: &State<T>) -> f64 {
         (0..state.len())
             .map(|i| self.energy(state, i))
-            .fold(0f64, |s, i| s + i) / 2.0
+            .fold(0f64, |s, i| s + i)
+            / 2.0
     }
 }
 
-
-
 pub struct CompoundEnergy<T, U, V>
-    where T: Spin,
-          U: EnergyComponent<T>,
-          V: EnergyComponent<T>
+where
+    T: Spin,
+    U: EnergyComponent<T>,
+    V: EnergyComponent<T>,
 {
     a: U,
     b: V,
@@ -148,23 +139,25 @@ pub struct CompoundEnergy<T, U, V>
 }
 
 impl<T, U, V> CompoundEnergy<T, U, V>
-    where T: Spin,
-          U: EnergyComponent<T>,
-          V: EnergyComponent<T>
+where
+    T: Spin,
+    U: EnergyComponent<T>,
+    V: EnergyComponent<T>,
 {
     pub fn new(a: U, b: V) -> Self {
         Self {
-            a: a,
-            b: b,
+            a,
+            b,
             phantom: PhantomData,
         }
     }
 }
 
 impl<T, U, V> EnergyComponent<T> for CompoundEnergy<T, U, V>
-    where T: Spin,
-          U: EnergyComponent<T>,
-          V: EnergyComponent<T>
+where
+    T: Spin,
+    U: EnergyComponent<T>,
+    V: EnergyComponent<T>,
 {
     fn energy(&self, state: &State<T>, index: usize) -> f64 {
         self.a.energy(&state, index) + self.b.energy(&state, index)
@@ -205,17 +198,10 @@ macro_rules! hamiltonian {
         );
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::{
-        EnergyComponent,
-        Gauge,
-        UniaxialAnisotropy,
-        ZeemanEnergy,
-        CompoundEnergy
-    };
-    use state::{Spin, State, HeisenbergSpin};
+    use super::{CompoundEnergy, EnergyComponent, Gauge, UniaxialAnisotropy, ZeemanEnergy};
+    use state::{HeisenbergSpin, Spin, State};
 
     #[test]
     fn test_gauge_energy() {
@@ -254,8 +240,10 @@ mod tests {
     #[test]
     fn lets_try_with_a_macro() {
         let state = State::<HeisenbergSpin>::up_with_size(10);
-        let hamiltonian = hamiltonian!(UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0),
-                                       Gauge::new(1.0));
+        let hamiltonian = hamiltonian!(
+            UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0),
+            Gauge::new(1.0)
+        );
         assert!(hamiltonian.total_energy(&state) - 200.0 < 1e-12);
     }
 }

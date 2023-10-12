@@ -3,9 +3,8 @@ extern crate rand;
 use rand::distributions::{IndependentSample, Range};
 use rand::{Rng, XorShiftRng};
 
-use state::{Spin, State};
 use energy::EnergyComponent;
-
+use state::{Spin, State};
 
 pub trait Integrator<S: Spin, T: EnergyComponent<S>> {
     fn step(&mut self, energy: &T, state: &State<S>) -> State<S>;
@@ -15,17 +14,15 @@ pub trait StateGenerator<S: Spin> {
     fn state(&mut self, nsites: usize) -> State<S>;
 }
 
-
 pub struct MetropolisIntegrator {
     rng: XorShiftRng,
     temp: f64,
 }
 
-
 impl MetropolisIntegrator {
     pub fn new(temp: f64) -> Self {
         Self {
-            temp: temp,
+            temp,
             rng: XorShiftRng::new_unseeded(),
         }
     }
@@ -39,14 +36,14 @@ impl MetropolisIntegrator {
     }
 
     pub fn cool(&mut self, delta: f64) {
-        self.heat( - delta);
+        self.heat(-delta);
     }
 }
 
-
-impl<S, T> Integrator<S, T> for MetropolisIntegrator where
+impl<S, T> Integrator<S, T> for MetropolisIntegrator
+where
     S: Spin + Clone,
-    T: EnergyComponent<S>
+    T: EnergyComponent<S>,
 {
     fn step(&mut self, energy: &T, state: &State<S>) -> State<S> {
         let mut new_state = (*state).clone();
@@ -58,10 +55,10 @@ impl<S, T> Integrator<S, T> for MetropolisIntegrator where
             let new_energy = energy.energy(&new_state, site);
             let delta = new_energy - old_energy;
             if delta < 0.0 {
-                continue
+                continue;
             }
-            if self.rng.gen::<f64>() < (- delta / self.temp).exp() {
-                continue
+            if self.rng.gen::<f64>() < (-delta / self.temp).exp() {
+                continue;
             }
             new_state.set_at(site, state.at(site).clone());
         }
@@ -69,7 +66,8 @@ impl<S, T> Integrator<S, T> for MetropolisIntegrator where
     }
 }
 
-impl<S> StateGenerator<S> for MetropolisIntegrator where
+impl<S> StateGenerator<S> for MetropolisIntegrator
+where
     S: Spin + Clone,
 {
     fn state(&mut self, nsites: usize) -> State<S> {

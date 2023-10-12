@@ -3,6 +3,6 @@
 extern crate rand;
 extern crate sprs;
 
-pub mod state;
 pub mod energy;
 pub mod integrator;
+pub mod state;
