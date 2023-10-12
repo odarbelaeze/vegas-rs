@@ -135,11 +135,11 @@ impl<T: Spin> State<T> {
     }
 
     pub fn spins(&self) -> &Vec<T> {
-        let &State::<T>(ref items) = self;
+        let State::<T>(items) = self;
         items
     }
 
-    pub fn at<'a>(&'a self, index: usize) -> &'a T {
+    pub fn at(&self, index: usize) -> &T {
         &self.spins()[index]
     }
 
@@ -149,6 +149,10 @@ impl<T: Spin> State<T> {
 
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 

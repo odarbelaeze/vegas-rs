@@ -111,7 +111,7 @@ impl<T: Spin> EnergyComponent<T> for ExchangeEnergy {
         if let Some(row) = self.exchange.outer_view(index) {
             row.iter()
                 .map(|(nbi, exc)| (state.at(nbi), exc))
-                .map(|(nb, exc)| -exc * site.interact(&nb))
+                .map(|(nb, exc)| -exc * site.interact(nb))
                 .fold(0f64, |s, i| s + i)
         } else {
             // Just retun 0.0 for out of ranges.
@@ -160,7 +160,7 @@ where
     V: EnergyComponent<T>,
 {
     fn energy(&self, state: &State<T>, index: usize) -> f64 {
-        self.a.energy(&state, index) + self.b.energy(&state, index)
+        self.a.energy(state, index) + self.b.energy(state, index)
     }
 }
 

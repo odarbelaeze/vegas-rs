@@ -16,7 +16,7 @@ use vegas_rs::energy::{EnergyComponent, ExchangeEnergy, Gauge};
 use vegas_rs::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
 use vegas_rs::state::{HeisenbergSpin, State};
 
-const USAGE: &'static str = "
+const USAGE: &str = "
 Vegas rust.
 
 Usage:
@@ -30,7 +30,7 @@ Options:
   --version     Show version.
 ";
 
-const VERSION: &'static str = "
+const VERSION: &str = "
 Vegas rust, version: 0.1.0
 ";
 
@@ -86,16 +86,12 @@ fn bench_lattice(input: &str) -> Result<(), Box<dyn Error>> {
 }
 
 fn check_error(res: Result<(), Box<dyn Error>>) {
-    match res {
-        Err(e) => {
-            eprintln!("Error: {}", e);
-            match e.source() {
-                Some(source) => eprintln!("source: {}", source),
-                _ => (),
-            };
-            std::process::exit(1);
+    if let Err(e) = res {
+        eprintln!("Error: {}", e);
+        if let Some(source) = e.source() {
+            eprintln!("source: {}", source);
         }
-        _ => {}
+        std::process::exit(1);
     }
 }
 
