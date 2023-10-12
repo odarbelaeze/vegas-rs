@@ -3,12 +3,13 @@ extern crate rand;
 extern crate test;
 extern crate vegas_rs;
 
-use rand::{FromEntropy, XorShiftRng};
+use rand::rngs::SmallRng;
+use rand::FromEntropy;
 use vegas_rs::state::{HeisenbergSpin, IsingSpin, Spin, State};
 
 #[bench]
 fn create_1k_ising_spins(b: &mut test::Bencher) {
-    let mut rng = XorShiftRng::from_entropy();
+    let mut rng = SmallRng::from_entropy();
     b.iter(|| {
         for _ in 0..1_000 {
             let _spin = IsingSpin::rand(&mut rng);
@@ -18,7 +19,7 @@ fn create_1k_ising_spins(b: &mut test::Bencher) {
 
 #[bench]
 fn create_1k_heisenberg_spins(b: &mut test::Bencher) {
-    let mut rng = XorShiftRng::from_entropy();
+    let mut rng = SmallRng::from_entropy();
     b.iter(|| {
         for _ in 0..1_000 {
             let _spin = HeisenbergSpin::rand(&mut rng);
@@ -28,7 +29,7 @@ fn create_1k_heisenberg_spins(b: &mut test::Bencher) {
 
 #[bench]
 fn create_a_1k_spin_state(b: &mut test::Bencher) {
-    let mut rng = XorShiftRng::from_entropy();
+    let mut rng = SmallRng::from_entropy();
     b.iter(|| {
         let _state = State::<HeisenbergSpin>::rand_with_size(1_000, &mut rng);
     })
