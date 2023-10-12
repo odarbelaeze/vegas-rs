@@ -12,5 +12,5 @@ license = "MIT"
 [dependencies]
 rand = { version = "0.8.5", features = ["small_rng"] }
 vegas-lattice = "0.1"
-docopt = "0.8.1"
-sprs = "0.6.0"
+docopt = "1"
+sprs = "0.11.1"
