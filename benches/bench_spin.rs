@@ -4,7 +4,7 @@ extern crate test;
 extern crate vegas_rs;
 
 use rand::rngs::SmallRng;
-use rand::FromEntropy;
+use rand::SeedableRng;
 use vegas_rs::state::{HeisenbergSpin, IsingSpin, Spin, State};
 
 #[bench]

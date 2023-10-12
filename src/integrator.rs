@@ -2,7 +2,7 @@ extern crate rand;
 
 use rand::distributions::{Distribution, Uniform};
 use rand::rngs::SmallRng;
-use rand::{FromEntropy, Rng};
+use rand::{Rng, SeedableRng};
 
 use energy::EnergyComponent;
 use state::{Spin, State};
