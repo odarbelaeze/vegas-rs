@@ -4,7 +4,7 @@
 
 extern crate rand;
 
-use rand::distributions::{IndependentSample, Range};
+use rand::distributions::{Distribution, Range};
 use rand::Rng;
 
 /// This trait specifies what a spin is for me.
@@ -48,7 +48,7 @@ impl Spin for IsingSpin {
     /// Randomly pick up or down for an Ising spin.
     fn rand<T: Rng>(rng: &mut T) -> Self {
         let range = Range::new(0f64, 1f64);
-        let r = range.ind_sample(rng);
+        let r = range.sample(rng);
         if r < 0.5f64 {
             IsingSpin::Up
         } else {

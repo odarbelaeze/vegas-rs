@@ -1,7 +1,7 @@
 extern crate rand;
 
-use rand::distributions::{IndependentSample, Range};
-use rand::{Rng, XorShiftRng};
+use rand::distributions::{Distribution, Range};
+use rand::{FromEntropy, Rng, XorShiftRng};
 
 use energy::EnergyComponent;
 use state::{Spin, State};
@@ -23,7 +23,7 @@ impl MetropolisIntegrator {
     pub fn new(temp: f64) -> Self {
         Self {
             temp,
-            rng: XorShiftRng::new_unseeded(),
+            rng: XorShiftRng::from_entropy(),
         }
     }
 
@@ -49,7 +49,7 @@ where
         let mut new_state = (*state).clone();
         let sites = Range::new(0, new_state.len());
         for _ in 0..new_state.len() {
-            let site = sites.ind_sample(&mut self.rng);
+            let site = sites.sample(&mut self.rng);
             let old_energy = energy.energy(&new_state, site);
             new_state.set_at(site, Spin::rand(&mut self.rng));
             let new_energy = energy.energy(&new_state, site);
