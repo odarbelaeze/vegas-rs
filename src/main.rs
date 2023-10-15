@@ -1,6 +1,6 @@
 #[macro_use]
 extern crate vegas_rs;
-extern crate docopt;
+extern crate clap;
 extern crate sprs;
 extern crate vegas_lattice;
 
@@ -8,31 +8,13 @@ use std::error::Error;
 use std::fs::File;
 use std::io::Read;
 
-use docopt::Docopt;
+use clap::{Parser, Subcommand};
 use sprs::TriMat;
 use vegas_lattice::Lattice;
 
 use vegas_rs::energy::{EnergyComponent, ExchangeEnergy, Gauge};
 use vegas_rs::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
 use vegas_rs::state::{HeisenbergSpin, State};
-
-const USAGE: &str = "
-Vegas rust.
-
-Usage:
-  vegas bench
-  vegas lattice <lattice>
-  vegas (-h | --help)
-  vegas --version
-
-Options:
-  -h --help     Show this screen.
-  --version     Show version.
-";
-
-const VERSION: &str = "
-Vegas rust, version: 0.1.0
-";
 
 fn cool_down<T: EnergyComponent<HeisenbergSpin>>(hamiltonian: T, len: usize) {
     let mut integrator = MetropolisIntegrator::new(3.0);
@@ -95,14 +77,25 @@ fn check_error(res: Result<(), Box<dyn Error>>) {
     }
 }
 
-pub fn main() {
-    let version = VERSION.trim().to_string();
-    let args = Docopt::new(USAGE)
-        .and_then(|doc| doc.version(Some(version)).parse())
-        .unwrap_or_else(|e| e.exit());
-    if args.get_bool("bench") {
-        bench()
-    } else if args.get_bool("lattice") {
-        check_error(bench_lattice(args.get_str("<lattice>")))
+#[derive(Debug, Subcommand)]
+enum SubCommand {
+    #[command(about = "Run benchmark")]
+    Bench {},
+    #[command(about = "Simulate the given lattice")]
+    Lattice { lattice: String },
+}
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about=None)]
+struct Cli {
+    #[clap(subcommand)]
+    subcmd: SubCommand,
+}
+
+fn main() {
+    let cli = Cli::parse();
+    match cli.subcmd {
+        SubCommand::Bench {} => bench(),
+        SubCommand::Lattice { lattice } => check_error(bench_lattice(&lattice)),
     }
 }
