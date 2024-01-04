@@ -1,8 +1,16 @@
+//! This module contains the energy components of the system.
+//!
+//! Energy components are parts of the Hamiltonian that can be aggregated.
+
 use sprs::CsMat;
 use state::{Spin, State};
 use std::iter::Iterator;
 use std::marker::PhantomData;
 
+/// A trait that represents an energy component of the system.
+///
+/// An energy component is characterized by the fact that it can
+/// compute the energy of a given site for a given state.
 pub trait EnergyComponent<T: Spin> {
     /// Get the energy of a given site for a state.
     ///
@@ -12,6 +20,7 @@ pub trait EnergyComponent<T: Spin> {
     /// of the state vector (business as usual)
     fn energy(&self, state: &State<T>, index: usize) -> f64;
 
+    /// Compute the total energy of a state.
     fn total_energy(&self, state: &State<T>) -> f64 {
         (0..state.len())
             .map(|i| self.energy(state, i))
@@ -19,11 +28,13 @@ pub trait EnergyComponent<T: Spin> {
     }
 }
 
+/// Some constant energy that doesn't depend on the state.
 pub struct Gauge {
     value: f64,
 }
 
 impl Gauge {
+    /// Create a new gauge energy.
     pub fn new(val: f64) -> Self {
         Self { value: val }
     }
@@ -36,6 +47,7 @@ impl<T: Spin> EnergyComponent<T> for Gauge {
     }
 }
 
+/// Strong preference for a given axis.
 pub struct UniaxialAnisotropy<T: Spin> {
     reference: T,
     strength: f64,
@@ -65,6 +77,7 @@ impl<T: Spin> EnergyComponent<T> for UniaxialAnisotropy<T> {
     }
 }
 
+/// Energy resulting from a magnetic field.
 pub struct ZeemanEnergy<T: Spin> {
     reference: T,
     strength: f64,
@@ -94,6 +107,7 @@ impl<T: Spin> EnergyComponent<T> for ZeemanEnergy<T> {
     }
 }
 
+/// Energy resulting from the exchange interaction.
 pub struct ExchangeEnergy {
     exchange: CsMat<f64>,
 }
@@ -127,6 +141,10 @@ impl<T: Spin> EnergyComponent<T> for ExchangeEnergy {
     }
 }
 
+/// A compound energy is the sum of two energy components.
+///
+/// The key point here is that you one of the energy components
+/// can be a compound energy itself.
 pub struct CompoundEnergy<T, U, V>
 where
     T: Spin,
@@ -176,7 +194,7 @@ where
 ///     let _hamiltonian =  hamiltonian!(
 ///         UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0),
 ///         Gauge::new(1.0)
-///         );
+///     );
 /// }
 /// ```
 #[macro_export]

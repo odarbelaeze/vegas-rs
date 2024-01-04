@@ -1,3 +1,5 @@
+//! Integrators for Monte Carlo simulations.
+
 extern crate rand;
 
 use rand::distributions::{Distribution, Uniform};
@@ -7,20 +9,31 @@ use rand::{Rng, SeedableRng};
 use energy::EnergyComponent;
 use state::{Spin, State};
 
+/// An integrator is a method that allows you to sample the phase space of a
+/// system.
 pub trait Integrator<S: Spin, T: EnergyComponent<S>> {
+    /// Perform a single step of the integrator.
     fn step(&mut self, energy: &T, state: &State<S>) -> State<S>;
 }
 
+/// A state generator is a method that allows you to generate a random state.
 pub trait StateGenerator<S: Spin> {
+    /// Generate a random state.
     fn state(&mut self, nsites: usize) -> State<S>;
 }
 
+/// The most common integrator is the Metropolis integrator.
+///
+/// The Metropolis integrator is a Monte Carlo method that allows you to sample
+/// the phase space of a system. It is based on the Metropolis algorithm, which
+/// is a Markov chain Monte Carlo method.
 pub struct MetropolisIntegrator {
     rng: SmallRng,
     temp: f64,
 }
 
 impl MetropolisIntegrator {
+    /// Create a new Metropolis integrator with a given temperature.
     pub fn new(temp: f64) -> Self {
         Self {
             temp,
@@ -28,14 +41,17 @@ impl MetropolisIntegrator {
         }
     }
 
+    /// Get the temperature of the integrator.
     pub fn temp(&self) -> f64 {
         self.temp
     }
 
+    /// Increase the temperature of the integrator.
     pub fn heat(&mut self, delta: f64) {
         self.temp += delta;
     }
 
+    /// Decrease the temperature of the integrator.
     pub fn cool(&mut self, delta: f64) {
         self.heat(-delta);
     }
