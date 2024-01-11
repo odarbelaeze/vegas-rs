@@ -48,10 +48,15 @@
 //!
 //! # Example
 //!
-//! ```rust,no_run
+//! ```rust
+//! use vegas_rs::hamiltonian;
+//! use vegas_rs::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
+//! use vegas_rs::energy::{EnergyComponent, Gauge};
+//! use vegas_rs::state::{HeisenbergSpin, State};
+//!
 //! let hamiltonian = hamiltonian!(Gauge::new(10.0));
 //! let mut integrator = MetropolisIntegrator::new(3.0);
-//! let mut state: State<HeisenbergSpin> = integrator.state(len);
+//! let mut state: State<HeisenbergSpin> = integrator.state(1000);
 //! loop {
 //!     let steps = 1000;
 //!     let mut energy_sum = 0.0;
