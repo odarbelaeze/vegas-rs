@@ -1,7 +1,7 @@
 [package]
 name = "vegas"
 version = "0.0.2"
-authors = ["Oscar Arbelaeze <@odarbelaeze>"]
+authors = ["Oscar Arbelaez <oscar@arbelaez.dev>"]
 description = "Little Monte Carlo code in rust"
 keywords = ["Monte-Carlo", "MCMC", "physics"]
 readme = "README.md"
