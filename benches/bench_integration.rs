@@ -1,12 +1,12 @@
 #![feature(test)]
 
 #[macro_use]
-extern crate vegas_rs;
+extern crate vegas;
 extern crate test;
 
-use vegas_rs::energy::{Gauge, UniaxialAnisotropy};
-use vegas_rs::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
-use vegas_rs::state::{HeisenbergSpin, IsingSpin, Spin, State};
+use vegas::energy::{Gauge, UniaxialAnisotropy};
+use vegas::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
+use vegas::state::{HeisenbergSpin, IsingSpin, Spin, State};
 
 #[bench]
 fn integration_of_1k_heisenberg_spin_with_gauge(b: &mut test::Bencher) {
@@ -34,4 +34,3 @@ fn integration_of_1k_heisenberg_spin_with_compound_energy(b: &mut test::Bencher)
     let mut state: State<HeisenbergSpin> = integrator.state(1_000);
     b.iter(|| state = integrator.step(&hamiltonian, &state))
 }
-

@@ -1,11 +1,11 @@
 #![feature(test)]
 extern crate rand;
 extern crate test;
-extern crate vegas_rs;
+extern crate vegas;
 
 use rand::thread_rng;
-use vegas_rs::energy::{CompoundEnergy, EnergyComponent, Gauge, UniaxialAnisotropy};
-use vegas_rs::state::{HeisenbergSpin, Spin, State};
+use vegas::energy::{Compound, Gauge, HamiltonianComponent, UniaxialAnisotropy};
+use vegas::state::{HeisenbergSpin, Spin, State};
 
 #[bench]
 fn gauge_energy_of_a_1_k_heisenberg_state(b: &mut test::Bencher) {
@@ -32,7 +32,7 @@ fn compound_energy_hit_1k_heisenberg(b: &mut test::Bencher) {
     let state = State::<HeisenbergSpin>::up_with_size(1_000);
     let gauge = Gauge::new(1.0);
     let anisotropy = UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0);
-    let compound = CompoundEnergy::new(gauge, anisotropy);
+    let compound = Compound::new(gauge, anisotropy);
     b.iter(|| {
         let energy = compound.total_energy(&state);
         assert!(energy == 2_000.0);

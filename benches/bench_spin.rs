@@ -1,11 +1,11 @@
 #![feature(test)]
 extern crate rand;
 extern crate test;
-extern crate vegas_rs;
+extern crate vegas;
 
 use rand::rngs::SmallRng;
 use rand::SeedableRng;
-use vegas_rs::state::{HeisenbergSpin, IsingSpin, Spin, State};
+use vegas::state::{HeisenbergSpin, IsingSpin, Spin, State};
 
 #[bench]
 fn create_1k_ising_spins(b: &mut test::Bencher) {

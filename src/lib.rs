@@ -14,7 +14,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! vegas = "0.1"
+//! vegas = "*"
 //! ```
 //!
 //! # Spins
@@ -40,19 +40,19 @@
 //!
 //! Among others this library provides the following hamiltonians:
 //!
-//! * `ExchangeEnergy` - A hamiltonian that calculates the exchange energy of a spin system.
+//! * `Exchange` - A hamiltonian that calculates the exchange energy of a spin system.
 //! * `Gauge` - A hamiltonian that calculates the gauge energy of a spin system.
 //! * `UniaxialAnisotropy` - A hamiltonian that calculates the uniaxial anisotropy energy of a spin system.
 //! * `ZeemanEnergy` - A hamiltonian that calculates the Zeeman energy of a spin system.
-//! * `CompoundEnergy` - A hamiltonian that combines multiple hamiltonians.
+//! * `Compound` - A hamiltonian that combines multiple hamiltonians.
 //!
 //! # Example
 //!
 //! ```rust
-//! use vegas_rs::hamiltonian;
-//! use vegas_rs::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
-//! use vegas_rs::energy::{EnergyComponent, Gauge};
-//! use vegas_rs::state::{HeisenbergSpin, State};
+//! use vegas::hamiltonian;
+//! use vegas::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
+//! use vegas::energy::{HamiltonianComponent, Gauge};
+//! use vegas::state::{HeisenbergSpin, State};
 //!
 //! let hamiltonian = hamiltonian!(Gauge::new(10.0));
 //! let mut integrator = MetropolisIntegrator::new(3.0);

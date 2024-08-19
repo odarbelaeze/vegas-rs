@@ -2,8 +2,8 @@
 //!
 //! Energy components are parts of the Hamiltonian that can be aggregated.
 
+use crate::state::{Spin, State};
 use sprs::CsMat;
-use state::{Spin, State};
 use std::iter::Iterator;
 use std::marker::PhantomData;
 
@@ -11,7 +11,7 @@ use std::marker::PhantomData;
 ///
 /// An energy component is characterized by the fact that it can
 /// compute the energy of a given site for a given state.
-pub trait EnergyComponent<T: Spin> {
+pub trait HamiltonianComponent<T: Spin> {
     /// Get the energy of a given site for a state.
     ///
     /// Panics:
@@ -40,7 +40,7 @@ impl Gauge {
     }
 }
 
-impl<T: Spin> EnergyComponent<T> for Gauge {
+impl<T: Spin> HamiltonianComponent<T> for Gauge {
     fn energy(&self, state: &State<T>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         self.value
@@ -62,7 +62,7 @@ impl<T: Spin> UniaxialAnisotropy<T> {
     }
 }
 
-impl<T: Spin> EnergyComponent<T> for UniaxialAnisotropy<T> {
+impl<T: Spin> HamiltonianComponent<T> for UniaxialAnisotropy<T> {
     fn energy(&self, state: &State<T>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         state.spins()[index].interact(&self.reference).powi(2) * self.strength
@@ -92,7 +92,7 @@ impl<T: Spin> ZeemanEnergy<T> {
     }
 }
 
-impl<T: Spin> EnergyComponent<T> for ZeemanEnergy<T> {
+impl<T: Spin> HamiltonianComponent<T> for ZeemanEnergy<T> {
     fn energy(&self, state: &State<T>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         -state.spins()[index].interact(&self.reference) * self.strength
@@ -108,17 +108,17 @@ impl<T: Spin> EnergyComponent<T> for ZeemanEnergy<T> {
 }
 
 /// Energy resulting from the exchange interaction.
-pub struct ExchangeEnergy {
+pub struct Exchage {
     exchange: CsMat<f64>,
 }
 
-impl ExchangeEnergy {
+impl Exchage {
     pub fn new(exc: CsMat<f64>) -> Self {
         Self { exchange: exc }
     }
 }
 
-impl<T: Spin> EnergyComponent<T> for ExchangeEnergy {
+impl<T: Spin> HamiltonianComponent<T> for Exchage {
     fn energy(&self, state: &State<T>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         let site = state.at(index);
@@ -145,22 +145,22 @@ impl<T: Spin> EnergyComponent<T> for ExchangeEnergy {
 ///
 /// The key point here is that you one of the energy components
 /// can be a compound energy itself.
-pub struct CompoundEnergy<T, U, V>
+pub struct Compound<T, U, V>
 where
     T: Spin,
-    U: EnergyComponent<T>,
-    V: EnergyComponent<T>,
+    U: HamiltonianComponent<T>,
+    V: HamiltonianComponent<T>,
 {
     a: U,
     b: V,
     phantom: PhantomData<T>,
 }
 
-impl<T, U, V> CompoundEnergy<T, U, V>
+impl<T, U, V> Compound<T, U, V>
 where
     T: Spin,
-    U: EnergyComponent<T>,
-    V: EnergyComponent<T>,
+    U: HamiltonianComponent<T>,
+    V: HamiltonianComponent<T>,
 {
     pub fn new(a: U, b: V) -> Self {
         Self {
@@ -171,11 +171,11 @@ where
     }
 }
 
-impl<T, U, V> EnergyComponent<T> for CompoundEnergy<T, U, V>
+impl<T, U, V> HamiltonianComponent<T> for Compound<T, U, V>
 where
     T: Spin,
-    U: EnergyComponent<T>,
-    V: EnergyComponent<T>,
+    U: HamiltonianComponent<T>,
+    V: HamiltonianComponent<T>,
 {
     fn energy(&self, state: &State<T>, index: usize) -> f64 {
         self.a.energy(state, index) + self.b.energy(state, index)
@@ -187,9 +187,9 @@ where
 /// Examples:
 ///
 /// ```
-/// #[macro_use] extern crate vegas_rs;
-/// use vegas_rs::state::{Spin, HeisenbergSpin};
-/// use vegas_rs::energy::{Gauge, UniaxialAnisotropy};
+/// #[macro_use] extern crate vegas;
+/// use vegas::state::{Spin, HeisenbergSpin};
+/// use vegas::energy::{Gauge, UniaxialAnisotropy};
 /// fn main() {
 ///     let _hamiltonian =  hamiltonian!(
 ///         UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0),
@@ -209,7 +209,7 @@ macro_rules! hamiltonian {
         $I
         );
     ($I: expr, $J: expr) => (
-        $crate::energy::CompoundEnergy::new($I, $J)
+        $crate::energy::Compound::new($I, $J)
         );
     ($I: expr, $J: expr, $($K: expr),+) => (
         hamiltonian!(@flatten hamiltonian!($I, $J), $($K,)+)
@@ -218,8 +218,8 @@ macro_rules! hamiltonian {
 
 #[cfg(test)]
 mod tests {
-    use super::{CompoundEnergy, EnergyComponent, Gauge, UniaxialAnisotropy, ZeemanEnergy};
-    use state::{HeisenbergSpin, Spin, State};
+    use super::{Compound, Gauge, HamiltonianComponent, UniaxialAnisotropy, ZeemanEnergy};
+    use crate::state::{HeisenbergSpin, Spin, State};
 
     #[test]
     fn test_gauge_energy() {
@@ -251,7 +251,7 @@ mod tests {
         let ups = State::<HeisenbergSpin>::up_with_size(10);
         let gauge = Gauge::new(10.0);
         let anisotropy = UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0);
-        let compound = CompoundEnergy::new(gauge, anisotropy);
+        let compound = Compound::new(gauge, anisotropy);
         assert!(compound.total_energy(&ups) - 200.0 < 1e-12);
     }
 

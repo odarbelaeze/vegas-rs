@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate vegas_rs;
+extern crate vegas;
 extern crate clap;
 extern crate sprs;
 extern crate vegas_lattice;
@@ -12,11 +12,11 @@ use clap::{Parser, Subcommand};
 use sprs::TriMat;
 use vegas_lattice::Lattice;
 
-use vegas_rs::energy::{EnergyComponent, ExchangeEnergy, Gauge};
-use vegas_rs::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
-use vegas_rs::state::{HeisenbergSpin, State};
+use vegas::energy::{Exchage, Gauge, HamiltonianComponent};
+use vegas::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
+use vegas::state::{HeisenbergSpin, State};
 
-fn cool_down<T: EnergyComponent<HeisenbergSpin>>(hamiltonian: T, len: usize) {
+fn cool_down<T: HamiltonianComponent<HeisenbergSpin>>(hamiltonian: T, len: usize) {
     let mut integrator = MetropolisIntegrator::new(3.0);
     let mut state: State<HeisenbergSpin> = integrator.state(len);
     loop {
@@ -61,7 +61,7 @@ fn bench_lattice(input: &str) -> Result<(), Box<dyn Error>> {
     println!("# Simulating with {} sites", nsites);
     println!("# Simulating with {} exchanges", lattice.vertices().len());
 
-    let hamiltonian = hamiltonian!(ExchangeEnergy::new(csr));
+    let hamiltonian = hamiltonian!(Exchage::new(csr));
 
     cool_down(hamiltonian, nsites);
     Ok(())

@@ -6,12 +6,12 @@ use rand::distributions::{Distribution, Uniform};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
-use energy::EnergyComponent;
-use state::{Spin, State};
+use crate::energy::HamiltonianComponent;
+use crate::state::{Spin, State};
 
 /// An integrator is a method that allows you to sample the phase space of a
 /// system.
-pub trait Integrator<S: Spin, T: EnergyComponent<S>> {
+pub trait Integrator<S: Spin, T: HamiltonianComponent<S>> {
     /// Perform a single step of the integrator.
     fn step(&mut self, energy: &T, state: &State<S>) -> State<S>;
 }
@@ -60,7 +60,7 @@ impl MetropolisIntegrator {
 impl<S, T> Integrator<S, T> for MetropolisIntegrator
 where
     S: Spin + Clone,
-    T: EnergyComponent<S>,
+    T: HamiltonianComponent<S>,
 {
     fn step(&mut self, energy: &T, state: &State<S>) -> State<S> {
         let mut new_state = (*state).clone();
