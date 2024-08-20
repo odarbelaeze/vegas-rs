@@ -74,6 +74,7 @@
 
 extern crate rand;
 extern crate sprs;
+extern crate vegas_lattice;
 
 pub mod energy;
 pub mod integrator;

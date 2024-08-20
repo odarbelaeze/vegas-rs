@@ -4,6 +4,9 @@
 
 extern crate rand;
 
+use std::iter::Sum;
+use std::ops::Add;
+
 use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
 
@@ -23,6 +26,10 @@ pub trait Spin {
     fn interact(&self, other: &Self) -> f64;
 }
 
+pub trait Magnetization {
+    fn magnitude(&self) -> f64;
+}
+
 /// This trait represents a spin which can be created as a perturbation of
 /// another, useful for things like a Metropolis algorithm.
 pub trait PerturbableSpin: Spin {
@@ -30,7 +37,7 @@ pub trait PerturbableSpin: Spin {
     fn perturbation_of<R: Rng>(other: &Self, rng: &mut R) -> Self;
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum IsingSpin {
     Up,
     Down,
@@ -71,6 +78,106 @@ impl PerturbableSpin for IsingSpin {
         match *other {
             Up => Down,
             Down => Up,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct IsingMagnetization {
+    magnitude: usize,
+    reference: IsingSpin,
+}
+
+impl IsingMagnetization {
+    pub fn new() -> Self {
+        IsingMagnetization {
+            magnitude: 0,
+            reference: IsingSpin::up(),
+        }
+    }
+}
+
+impl Magnetization for IsingMagnetization {
+    fn magnitude(&self) -> f64 {
+        self.magnitude as f64
+    }
+}
+
+impl Sum<IsingSpin> for IsingMagnetization {
+    fn sum<I: Iterator<Item = IsingSpin>>(iter: I) -> Self {
+        iter.fold(IsingMagnetization::new(), |acc, i| acc + i)
+    }
+}
+
+impl Add for IsingSpin {
+    type Output = IsingMagnetization;
+
+    fn add(self, other: IsingSpin) -> IsingMagnetization {
+        match (self, other) {
+            (IsingSpin::Up, IsingSpin::Up) => IsingMagnetization {
+                magnitude: 2,
+                reference: IsingSpin::up(),
+            },
+            (IsingSpin::Down, IsingSpin::Down) => IsingMagnetization {
+                magnitude: 2,
+                reference: IsingSpin::down(),
+            },
+            _ => IsingMagnetization {
+                magnitude: 0,
+                reference: IsingSpin::up(),
+            },
+        }
+    }
+}
+
+impl Add for IsingMagnetization {
+    type Output = IsingMagnetization;
+
+    fn add(self, other: IsingMagnetization) -> IsingMagnetization {
+        match (&self.reference, &other.reference) {
+            (IsingSpin::Up, IsingSpin::Up) | (IsingSpin::Down, IsingSpin::Down) => {
+                IsingMagnetization {
+                    magnitude: self.magnitude + other.magnitude,
+                    reference: self.reference,
+                }
+            }
+            _ => {
+                if self.magnitude > other.magnitude {
+                    IsingMagnetization {
+                        magnitude: self.magnitude - other.magnitude,
+                        reference: self.reference,
+                    }
+                } else {
+                    IsingMagnetization {
+                        magnitude: other.magnitude - self.magnitude,
+                        reference: other.reference,
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl Add<IsingSpin> for IsingMagnetization {
+    type Output = IsingMagnetization;
+
+    fn add(self, rhs: IsingSpin) -> Self::Output {
+        if self.magnitude == 0 {
+            return IsingMagnetization {
+                magnitude: 1,
+                reference: rhs,
+            };
+        }
+        if self.reference == rhs {
+            IsingMagnetization {
+                magnitude: self.magnitude + 1,
+                reference: self.reference,
+            }
+        } else {
+            IsingMagnetization {
+                magnitude: self.magnitude - 1,
+                reference: self.reference,
+            }
         }
     }
 }
@@ -118,6 +225,51 @@ impl PerturbableSpin for HeisenbergSpin {
     }
 }
 
+pub struct HeisenbergMagnetization([f64; 3]);
+
+impl HeisenbergMagnetization {
+    pub fn new() -> Self {
+        HeisenbergMagnetization([0f64, 0f64, 0f64])
+    }
+}
+
+impl Magnetization for HeisenbergMagnetization {
+    fn magnitude(&self) -> f64 {
+        let HeisenbergMagnetization(a) = self;
+        a.iter().map(|i| i * i).sum::<f64>().sqrt()
+    }
+}
+
+impl Add for HeisenbergSpin {
+    type Output = HeisenbergMagnetization;
+
+    fn add(self, other: HeisenbergSpin) -> HeisenbergMagnetization {
+        let HeisenbergSpin(a) = self;
+        let HeisenbergSpin(b) = other;
+        HeisenbergMagnetization([a[0] + b[0], a[1] + b[1], a[2] + b[2]])
+    }
+}
+
+impl Add for HeisenbergMagnetization {
+    type Output = HeisenbergMagnetization;
+
+    fn add(self, other: HeisenbergMagnetization) -> HeisenbergMagnetization {
+        let HeisenbergMagnetization(a) = self;
+        let HeisenbergMagnetization(b) = other;
+        HeisenbergMagnetization([a[0] + b[0], a[1] + b[1], a[2] + b[2]])
+    }
+}
+
+impl Add<HeisenbergSpin> for HeisenbergMagnetization {
+    type Output = HeisenbergMagnetization;
+
+    fn add(self, rhs: HeisenbergSpin) -> Self::Output {
+        let HeisenbergMagnetization(a) = self;
+        let HeisenbergSpin(b) = rhs;
+        HeisenbergMagnetization([a[0] + b[0], a[1] + b[1], a[2] + b[2]])
+    }
+}
+
 #[derive(Clone)]
 pub struct State<T: Spin>(Vec<T>);
 
@@ -159,6 +311,7 @@ impl<T: Spin> State<T> {
 #[cfg(test)]
 mod tests {
     use super::HeisenbergSpin;
+    use super::IsingMagnetization;
     use super::IsingSpin;
     use super::State;
     use super::{PerturbableSpin, Spin};
@@ -179,6 +332,14 @@ mod tests {
         real_close(down.interact(&down), 1.0);
         real_close(rand.interact(&rand), 1.0);
         real_close(rand.interact(&up) + rand.interact(&down), 0.0);
+    }
+
+    #[test]
+    fn ising_magnetization_can_be_added_with_spin() {
+        let mag = IsingMagnetization::new();
+        let up = IsingSpin::up();
+        let result = mag + up;
+        assert_eq!(result.magnitude, 1);
     }
 
     #[test]

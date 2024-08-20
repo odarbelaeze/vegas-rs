@@ -9,25 +9,39 @@ use std::fs::File;
 use std::io::Read;
 
 use clap::{Parser, Subcommand};
-use sprs::TriMat;
-use vegas_lattice::Lattice;
+use vegas_lattice::{Axis, Lattice};
 
-use vegas::energy::{Exchage, Gauge, HamiltonianComponent};
+use vegas::energy::{Exchage, HamiltonianComponent};
 use vegas::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
-use vegas::state::{HeisenbergSpin, State};
+use vegas::state::{IsingMagnetization, IsingSpin, Magnetization};
 
-fn cool_down<T: HamiltonianComponent<HeisenbergSpin>>(hamiltonian: T, len: usize) {
-    let mut integrator = MetropolisIntegrator::new(3.0);
-    let mut state: State<HeisenbergSpin> = integrator.state(len);
+fn cool_down<T>(hamiltonian: T, len: usize)
+where
+    T: HamiltonianComponent<IsingSpin>,
+{
+    let mut integrator = MetropolisIntegrator::new(5.0);
+    let mut state = integrator.state(len);
     loop {
-        let steps = 1000;
+        let steps = 5000;
         let mut energy_sum = 0.0;
+        let mut magnetization_sum = IsingMagnetization::new();
         for _ in 0..steps {
             state = integrator.step(&hamiltonian, &state);
-            energy_sum += hamiltonian.total_energy(&state)
+            energy_sum += hamiltonian.total_energy(&state);
+            magnetization_sum = magnetization_sum
+                + state
+                    .spins()
+                    .clone()
+                    .into_iter()
+                    .sum::<IsingMagnetization>();
         }
-        println!("{} {}", integrator.temp(), energy_sum / steps as f64);
-        if integrator.temp() < 0.1 {
+        println!(
+            "{} {} {}",
+            integrator.temp(),
+            energy_sum / steps as f64,
+            magnetization_sum.magnitude() / steps as f64
+        );
+        if integrator.temp() < 1.0 {
             break;
         }
         integrator.cool(0.1);
@@ -35,8 +49,12 @@ fn cool_down<T: HamiltonianComponent<HeisenbergSpin>>(hamiltonian: T, len: usize
 }
 
 fn bench() {
-    let hamiltonian = hamiltonian!(Gauge::new(10.0));
-    cool_down(hamiltonian, 100);
+    let lattice = Lattice::sc(1.0)
+        .expand_along(Axis::X, 10)
+        .expand_along(Axis::Y, 10)
+        .expand_along(Axis::Z, 10);
+    let hamiltonian = hamiltonian!(Exchage::from_lattice(&lattice));
+    cool_down(hamiltonian, lattice.sites().len());
 }
 
 fn bench_lattice(input: &str) -> Result<(), Box<dyn Error>> {
@@ -46,24 +64,12 @@ fn bench_lattice(input: &str) -> Result<(), Box<dyn Error>> {
     let lattice: Lattice = data.parse()?;
     println!("# Successfuly read the lattice!");
 
-    let nsites = lattice.sites().len();
-
-    let mut mat = TriMat::new((nsites, nsites));
-    for vertex in lattice.vertices() {
-        if vertex.source() <= vertex.target() {
-            mat.add_triplet(vertex.source(), vertex.target(), 1.0);
-            mat.add_triplet(vertex.target(), vertex.source(), 1.0);
-        }
-    }
-
-    let csr = mat.to_csr();
-
-    println!("# Simulating with {} sites", nsites);
+    println!("# Simulating with {} sites", lattice.sites().len());
     println!("# Simulating with {} exchanges", lattice.vertices().len());
 
-    let hamiltonian = hamiltonian!(Exchage::new(csr));
+    let hamiltonian = hamiltonian!(Exchage::from_lattice(&lattice));
 
-    cool_down(hamiltonian, nsites);
+    cool_down(hamiltonian, lattice.sites().len());
     Ok(())
 }
 

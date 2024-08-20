@@ -3,9 +3,10 @@
 //! Energy components are parts of the Hamiltonian that can be aggregated.
 
 use crate::state::{Spin, State};
-use sprs::CsMat;
+use sprs::{CsMat, TriMat};
 use std::iter::Iterator;
 use std::marker::PhantomData;
+use vegas_lattice::Lattice;
 
 /// A trait that represents an energy component of the system.
 ///
@@ -115,6 +116,19 @@ pub struct Exchage {
 impl Exchage {
     pub fn new(exc: CsMat<f64>) -> Self {
         Self { exchange: exc }
+    }
+
+    pub fn from_lattice(lattice: &Lattice) -> Self {
+        let nsites = lattice.sites().len();
+        let mut mat = TriMat::new((nsites, nsites));
+        for vertex in lattice.vertices() {
+            if vertex.source() <= vertex.target() {
+                mat.add_triplet(vertex.source(), vertex.target(), 1.0);
+                mat.add_triplet(vertex.target(), vertex.source(), 1.0);
+            }
+        }
+        let csr = mat.to_csr();
+        Self::new(csr)
     }
 }
 
