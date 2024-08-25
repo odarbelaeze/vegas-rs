@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate vegas;
 extern crate clap;
+extern crate rand_pcg;
 extern crate sprs;
 extern crate vegas_lattice;
 
@@ -9,6 +10,7 @@ use std::fs::File;
 use std::io::Read;
 
 use clap::{Parser, Subcommand};
+use rand_pcg::Pcg64;
 use vegas_lattice::{Axis, Lattice};
 
 use vegas::energy::{Exchage, HamiltonianComponent};
@@ -19,21 +21,16 @@ fn cool_down<T>(hamiltonian: T, len: usize)
 where
     T: HamiltonianComponent<IsingSpin>,
 {
-    let mut integrator = MetropolisIntegrator::new(5.0);
+    let mut integrator = MetropolisIntegrator::<Pcg64>::new(5.0);
     let mut state = integrator.state(len);
     loop {
-        let steps = 5000;
+        let steps = 50000;
         let mut energy_sum = 0.0;
         let mut magnetization_sum = IsingMagnetization::new();
         for _ in 0..steps {
             state = integrator.step(&hamiltonian, &state);
             energy_sum += hamiltonian.total_energy(&state);
-            magnetization_sum = magnetization_sum
-                + state
-                    .spins()
-                    .clone()
-                    .into_iter()
-                    .sum::<IsingMagnetization>();
+            magnetization_sum = state.magnetization();
         }
         println!(
             "{} {} {}",

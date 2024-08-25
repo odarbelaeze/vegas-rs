@@ -49,12 +49,18 @@ impl<T: Spin> HamiltonianComponent<T> for Gauge {
 }
 
 /// Strong preference for a given axis.
-pub struct UniaxialAnisotropy<T: Spin> {
+pub struct UniaxialAnisotropy<T>
+where
+    T: Spin,
+{
     reference: T,
     strength: f64,
 }
 
-impl<T: Spin> UniaxialAnisotropy<T> {
+impl<T> UniaxialAnisotropy<T>
+where
+    T: Spin,
+{
     pub fn new(s: T, k: f64) -> Self {
         Self {
             reference: s,
@@ -63,28 +69,38 @@ impl<T: Spin> UniaxialAnisotropy<T> {
     }
 }
 
-impl<T: Spin> HamiltonianComponent<T> for UniaxialAnisotropy<T> {
+impl<T> HamiltonianComponent<T> for UniaxialAnisotropy<T>
+where
+    T: Spin,
+{
     fn energy(&self, state: &State<T>, index: usize) -> f64 {
         debug_assert!(index < state.len());
-        state.spins()[index].interact(&self.reference).powi(2) * self.strength
+        let s = state.at(index);
+        s.dot(&self.reference).powi(2) * self.strength
     }
 
     fn total_energy(&self, state: &State<T>) -> f64 {
         state
             .spins()
             .iter()
-            .map(|s| s.interact(&self.reference).powi(2))
-            .fold(0f64, |s, i| s + i)
+            .map(|s| (s.dot(&self.reference)).powi(2))
+            .sum()
     }
 }
 
 /// Energy resulting from a magnetic field.
-pub struct ZeemanEnergy<T: Spin> {
+pub struct ZeemanEnergy<T>
+where
+    T: Spin,
+{
     reference: T,
     strength: f64,
 }
 
-impl<T: Spin> ZeemanEnergy<T> {
+impl<T> ZeemanEnergy<T>
+where
+    T: Spin,
+{
     pub fn new(s: T, h: f64) -> Self {
         Self {
             reference: s,
@@ -93,18 +109,22 @@ impl<T: Spin> ZeemanEnergy<T> {
     }
 }
 
-impl<T: Spin> HamiltonianComponent<T> for ZeemanEnergy<T> {
+impl<T> HamiltonianComponent<T> for ZeemanEnergy<T>
+where
+    T: Spin,
+{
     fn energy(&self, state: &State<T>, index: usize) -> f64 {
         debug_assert!(index < state.len());
-        -state.spins()[index].interact(&self.reference) * self.strength
+        let s = state.at(index);
+        s.dot(&self.reference) * self.strength
     }
 
     fn total_energy(&self, state: &State<T>) -> f64 {
         -state
             .spins()
             .iter()
-            .map(|s| s.interact(&self.reference))
-            .fold(0f64, |s, i| s + i)
+            .map(|s| s.dot(&self.reference))
+            .sum::<f64>()
     }
 }
 
@@ -132,14 +152,17 @@ impl Exchage {
     }
 }
 
-impl<T: Spin> HamiltonianComponent<T> for Exchage {
+impl<T> HamiltonianComponent<T> for Exchage
+where
+    T: Spin,
+{
     fn energy(&self, state: &State<T>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         let site = state.at(index);
         if let Some(row) = self.exchange.outer_view(index) {
             row.iter()
                 .map(|(nbi, exc)| (state.at(nbi), exc))
-                .map(|(nb, exc)| -exc * site.interact(nb))
+                .map(|(nb, exc)| -exc * (site.dot(nb)))
                 .fold(0f64, |s, i| s + i)
         } else {
             // Just retun 0.0 for out of ranges.

@@ -14,3 +14,4 @@ rand = { version = "0.8.5", features = ["small_rng"] }
 vegas-lattice = "0.5"
 sprs = "0.11.1"
 clap = { version = "4.4.6", features = ["cargo", "derive"] }
+rand_pcg = "0.3.1"

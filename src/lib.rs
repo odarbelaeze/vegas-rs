@@ -49,13 +49,16 @@
 //! # Example
 //!
 //! ```rust
+//! extern crate rand;
+//!
 //! use vegas::hamiltonian;
 //! use vegas::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
 //! use vegas::energy::{HamiltonianComponent, Gauge};
 //! use vegas::state::{HeisenbergSpin, State};
+//! use rand::rngs::SmallRng;
 //!
 //! let hamiltonian = hamiltonian!(Gauge::new(10.0));
-//! let mut integrator = MetropolisIntegrator::new(3.0);
+//! let mut integrator = MetropolisIntegrator::<SmallRng>::new(3.0);
 //! let mut state: State<HeisenbergSpin> = integrator.state(1000);
 //! loop {
 //!     let steps = 1000;
@@ -73,6 +76,7 @@
 //! ```
 
 extern crate rand;
+extern crate rand_pcg;
 extern crate sprs;
 extern crate vegas_lattice;
 

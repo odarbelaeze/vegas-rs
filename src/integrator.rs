@@ -1,9 +1,6 @@
 //! Integrators for Monte Carlo simulations.
 
-extern crate rand;
-
 use rand::distributions::{Distribution, Uniform};
-use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
 use crate::energy::HamiltonianComponent;
@@ -27,18 +24,29 @@ pub trait StateGenerator<S: Spin> {
 /// The Metropolis integrator is a Monte Carlo method that allows you to sample
 /// the phase space of a system. It is based on the Metropolis algorithm, which
 /// is a Markov chain Monte Carlo method.
-pub struct MetropolisIntegrator {
-    rng: SmallRng,
+pub struct MetropolisIntegrator<R>
+where
+    R: Rng,
+{
+    rng: R,
     temp: f64,
 }
 
-impl MetropolisIntegrator {
+impl<R> MetropolisIntegrator<R>
+where
+    R: Rng + SeedableRng,
+{
     /// Create a new Metropolis integrator with a given temperature.
     pub fn new(temp: f64) -> Self {
         Self {
             temp,
-            rng: SmallRng::from_entropy(),
+            rng: R::from_entropy(),
         }
+    }
+
+    /// Create a new Metropolis integrator with a given random number generator
+    pub fn new_with_rng(temp: f64, rng: R) -> Self {
+        Self { temp, rng }
     }
 
     /// Get the temperature of the integrator.
@@ -57,10 +65,11 @@ impl MetropolisIntegrator {
     }
 }
 
-impl<S, T> Integrator<S, T> for MetropolisIntegrator
+impl<S, T, R> Integrator<S, T> for MetropolisIntegrator<R>
 where
     S: Spin + Clone,
     T: HamiltonianComponent<S>,
+    R: Rng,
 {
     fn step(&mut self, energy: &T, state: &State<S>) -> State<S> {
         let mut new_state = (*state).clone();
@@ -83,9 +92,10 @@ where
     }
 }
 
-impl<S> StateGenerator<S> for MetropolisIntegrator
+impl<S, R> StateGenerator<S> for MetropolisIntegrator<R>
 where
     S: Spin + Clone,
+    R: Rng,
 {
     fn state(&mut self, nsites: usize) -> State<S> {
         State::rand_with_size(nsites, &mut self.rng)

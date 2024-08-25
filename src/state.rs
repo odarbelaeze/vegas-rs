@@ -2,8 +2,6 @@
 //! atomistic Monte Carlo simulation program to deal with magnetic properties
 //! of materials.
 
-extern crate rand;
-
 use std::iter::Sum;
 use std::ops::Add;
 
@@ -12,6 +10,9 @@ use rand::Rng;
 
 /// This trait specifies what a spin is for me.
 pub trait Spin {
+    /// The type of magnetization that this spin can generate.
+    type MagnetizationType;
+
     /// New up an up Spin, this depends on what you're calling up.
     fn up() -> Self;
 
@@ -22,8 +23,11 @@ pub trait Spin {
     /// New up a random spin.
     fn rand<T: Rng>(rng: &mut T) -> Self;
 
+    #[deprecated(since = "0.0.4", note = "Use `&s1.dot(&s2)` instead")]
     /// Interact with another spin
     fn interact(&self, other: &Self) -> f64;
+
+    fn dot(&self, other: &Self) -> f64;
 }
 
 pub trait Magnetization {
@@ -44,6 +48,8 @@ pub enum IsingSpin {
 }
 
 impl Spin for IsingSpin {
+    type MagnetizationType = IsingMagnetization;
+
     fn up() -> Self {
         IsingSpin::Up
     }
@@ -64,6 +70,10 @@ impl Spin for IsingSpin {
     }
 
     fn interact(&self, other: &Self) -> f64 {
+        self.dot(other)
+    }
+
+    fn dot(&self, other: &Self) -> f64 {
         use self::IsingSpin::{Down, Up};
         match (self, other) {
             (&Up, &Up) | (&Down, &Down) => 1f64,
@@ -100,6 +110,12 @@ impl IsingMagnetization {
 impl Magnetization for IsingMagnetization {
     fn magnitude(&self) -> f64 {
         self.magnitude as f64
+    }
+}
+
+impl Default for IsingMagnetization {
+    fn default() -> Self {
+        IsingMagnetization::new()
     }
 }
 
@@ -182,10 +198,12 @@ impl Add<IsingSpin> for IsingMagnetization {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct HeisenbergSpin([f64; 3]);
 
 impl Spin for HeisenbergSpin {
+    type MagnetizationType = HeisenbergMagnetization;
+
     fn up() -> Self {
         HeisenbergSpin([0f64, 0f64, 1f64])
     }
@@ -209,6 +227,10 @@ impl Spin for HeisenbergSpin {
     }
 
     fn interact(&self, other: &Self) -> f64 {
+        self.dot(other)
+    }
+
+    fn dot(&self, other: &Self) -> f64 {
         let &HeisenbergSpin(_self) = self;
         let &HeisenbergSpin(_other) = other;
         _self
@@ -237,6 +259,12 @@ impl Magnetization for HeisenbergMagnetization {
     fn magnitude(&self) -> f64 {
         let HeisenbergMagnetization(a) = self;
         a.iter().map(|i| i * i).sum::<f64>().sqrt()
+    }
+}
+
+impl Default for HeisenbergMagnetization {
+    fn default() -> Self {
+        HeisenbergMagnetization::new()
     }
 }
 
@@ -306,6 +334,15 @@ impl<T: Spin> State<T> {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    pub fn magnetization(&self) -> T::MagnetizationType
+    where
+        T: Spin + Add<T, Output = T::MagnetizationType> + Clone,
+        T::MagnetizationType:
+            Default + Add<T::MagnetizationType, Output = T::MagnetizationType> + Sum<T>,
+    {
+        self.spins().iter().cloned().sum()
+    }
 }
 
 #[cfg(test)]
@@ -326,12 +363,12 @@ mod tests {
         let up = IsingSpin::up();
         let down = IsingSpin::down();
         let rand = IsingSpin::rand(&mut thread_rng());
-        real_close(up.interact(&up), 1.0);
-        real_close(up.interact(&down), -1.0);
-        real_close(down.interact(&up), -1.0);
-        real_close(down.interact(&down), 1.0);
-        real_close(rand.interact(&rand), 1.0);
-        real_close(rand.interact(&up) + rand.interact(&down), 0.0);
+        real_close(up.dot(&up), 1.0);
+        real_close(up.dot(&down), -1.0);
+        real_close(down.dot(&up), -1.0);
+        real_close(down.dot(&down), 1.0);
+        real_close(rand.dot(&rand), 1.0);
+        real_close(rand.dot(&up) + rand.dot(&down), 0.0);
     }
 
     #[test]
@@ -347,9 +384,9 @@ mod tests {
         let up = HeisenbergSpin::up();
         let down = HeisenbergSpin::down();
         let rand = HeisenbergSpin::rand(&mut thread_rng());
-        real_close(up.interact(&up), 1.0);
-        real_close(up.interact(&down), -1.0);
-        real_close(rand.interact(&rand), 1.0);
+        real_close(up.dot(&up), 1.0);
+        real_close(up.dot(&down), -1.0);
+        real_close(rand.dot(&rand), 1.0);
     }
 
     #[test]
