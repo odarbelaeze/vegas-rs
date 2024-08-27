@@ -15,7 +15,7 @@ use vegas_lattice::{Axis, Lattice};
 
 use vegas::energy::{Exchage, HamiltonianComponent};
 use vegas::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
-use vegas::state::{IsingMagnetization, IsingSpin, Magnetization};
+use vegas::state::{IsingMagnetization, IsingSpin, Magnetization, State};
 
 fn cool_down<T>(hamiltonian: T, len: usize)
 where
@@ -57,8 +57,39 @@ fn bench(length: usize) {
         .expand_along(Axis::X, length)
         .expand_along(Axis::Y, length)
         .drop(Axis::Z);
+    let len = lattice.sites().len();
     let hamiltonian = hamiltonian!(Exchage::from_lattice(&lattice));
-    cool_down(hamiltonian, lattice.sites().len());
+    let mut integrator = MetropolisIntegrator::<Pcg64>::new(3.0);
+    let mut state: State<IsingSpin> = integrator.state(len);
+    let mut current_step = 0;
+    println!("# Number of atoms generated {}", len);
+    loop {
+        let steps = 1000;
+        let mut energy_sum = 0.0;
+        let mut magnetization_sum = IsingMagnetization::new();
+        let mut mag_square_sum = 0.0;
+        let mut mag_to_the_fourth_sum = 0.0;
+        for _ in 0..steps {
+            state = integrator.step(&hamiltonian, &state);
+            energy_sum += hamiltonian.total_energy(&state);
+            let magnetization = state.magnetization();
+            magnetization_sum += magnetization.clone();
+            mag_square_sum += (magnetization.magnitude() / len as f64).powi(2);
+            mag_to_the_fourth_sum += (magnetization.magnitude() / len as f64).powi(4);
+            current_step += 1;
+        }
+        println!(
+            "{} {} {} {}",
+            integrator.temp(),
+            energy_sum / steps as f64,
+            magnetization_sum.magnitude() / steps as f64,
+            1.0 - (mag_to_the_fourth_sum / steps as f64) / 3.0
+                * (mag_square_sum / steps as f64).powi(2)
+        );
+        if current_step > 10000 {
+            break;
+        }
+    }
 }
 
 fn bench_lattice(input: &str) -> Result<(), Box<dyn Error>> {

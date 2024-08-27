@@ -75,6 +75,7 @@ impl Spin for IsingSpin {
         self.dot(other)
     }
 
+    #[inline]
     fn dot(&self, other: &Self) -> f64 {
         use self::IsingSpin::{Down, Up};
         match (self, other) {
@@ -244,6 +245,7 @@ impl Spin for HeisenbergSpin {
         self.dot(other)
     }
 
+    #[inline]
     fn dot(&self, other: &Self) -> f64 {
         let &HeisenbergSpin(_self) = self;
         let &HeisenbergSpin(_other) = other;
