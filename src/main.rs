@@ -21,35 +21,42 @@ fn cool_down<T>(hamiltonian: T, len: usize)
 where
     T: HamiltonianComponent<IsingSpin>,
 {
-    let mut integrator = MetropolisIntegrator::<Pcg64>::new(5.0);
+    let mut integrator = MetropolisIntegrator::<Pcg64>::new(3.0);
     let mut state = integrator.state(len);
     loop {
-        let steps = 50000;
+        let steps = 10000;
         let mut energy_sum = 0.0;
         let mut magnetization_sum = IsingMagnetization::new();
+        let mut mag_square_sum = 0.0;
+        let mut mag_to_the_fourth_sum = 0.0;
         for _ in 0..steps {
             state = integrator.step(&hamiltonian, &state);
             energy_sum += hamiltonian.total_energy(&state);
-            magnetization_sum = state.magnetization();
+            let magnetization = state.magnetization();
+            magnetization_sum += magnetization.clone();
+            mag_square_sum += (magnetization.magnitude() / len as f64).powi(2);
+            mag_to_the_fourth_sum += (magnetization.magnitude() / len as f64).powi(4);
         }
         println!(
-            "{} {} {}",
+            "{} {} {} {}",
             integrator.temp(),
             energy_sum / steps as f64,
-            magnetization_sum.magnitude() / steps as f64
+            magnetization_sum.magnitude() / steps as f64,
+            1.0 - (mag_to_the_fourth_sum / steps as f64) / 3.0
+                * (mag_square_sum / steps as f64).powi(2)
         );
-        if integrator.temp() < 1.0 {
+        if integrator.temp() < 0.2 {
             break;
         }
-        integrator.cool(0.1);
+        integrator.cool(0.05);
     }
 }
 
-fn bench() {
+fn bench(length: usize) {
     let lattice = Lattice::sc(1.0)
-        .expand_along(Axis::X, 10)
-        .expand_along(Axis::Y, 10)
-        .expand_along(Axis::Z, 10);
+        .expand_along(Axis::X, length)
+        .expand_along(Axis::Y, length)
+        .drop(Axis::Z);
     let hamiltonian = hamiltonian!(Exchage::from_lattice(&lattice));
     cool_down(hamiltonian, lattice.sites().len());
 }
@@ -83,7 +90,7 @@ fn check_error(res: Result<(), Box<dyn Error>>) {
 #[derive(Debug, Subcommand)]
 enum SubCommand {
     #[command(about = "Run benchmark")]
-    Bench {},
+    Bench { length: usize },
     #[command(about = "Simulate the given lattice")]
     Lattice { lattice: String },
 }
@@ -98,7 +105,7 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
     match cli.subcmd {
-        SubCommand::Bench {} => bench(),
+        SubCommand::Bench { length } => bench(length),
         SubCommand::Lattice { lattice } => check_error(bench_lattice(&lattice)),
     }
 }

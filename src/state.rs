@@ -3,15 +3,14 @@
 //! of materials.
 
 use std::iter::Sum;
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 
 use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
 
 /// This trait specifies what a spin is for me.
 pub trait Spin {
-    /// The type of magnetization that this spin can generate.
-    type MagnetizationType;
+    type MagnetizationType: Magnetization<SpinType = Self>;
 
     /// New up an up Spin, this depends on what you're calling up.
     fn up() -> Self;
@@ -31,7 +30,10 @@ pub trait Spin {
 }
 
 pub trait Magnetization {
+    type SpinType: Spin;
+
     fn magnitude(&self) -> f64;
+    fn orientation(&self) -> Self::SpinType;
 }
 
 /// This trait represents a spin which can be created as a perturbation of
@@ -41,7 +43,7 @@ pub trait PerturbableSpin: Spin {
     fn perturbation_of<R: Rng>(other: &Self, rng: &mut R) -> Self;
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum IsingSpin {
     Up,
     Down,
@@ -92,7 +94,7 @@ impl PerturbableSpin for IsingSpin {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct IsingMagnetization {
     magnitude: usize,
     reference: IsingSpin,
@@ -108,8 +110,14 @@ impl IsingMagnetization {
 }
 
 impl Magnetization for IsingMagnetization {
+    type SpinType = IsingSpin;
+
     fn magnitude(&self) -> f64 {
         self.magnitude as f64
+    }
+
+    fn orientation(&self) -> Self::SpinType {
+        self.reference.clone()
     }
 }
 
@@ -174,6 +182,12 @@ impl Add for IsingMagnetization {
     }
 }
 
+impl AddAssign for IsingMagnetization {
+    fn add_assign(&mut self, other: IsingMagnetization) {
+        *self = self.clone() + other;
+    }
+}
+
 impl Add<IsingSpin> for IsingMagnetization {
     type Output = IsingMagnetization;
 
@@ -198,7 +212,7 @@ impl Add<IsingSpin> for IsingMagnetization {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct HeisenbergSpin([f64; 3]);
 
 impl Spin for HeisenbergSpin {
@@ -247,6 +261,7 @@ impl PerturbableSpin for HeisenbergSpin {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct HeisenbergMagnetization([f64; 3]);
 
 impl HeisenbergMagnetization {
@@ -256,9 +271,17 @@ impl HeisenbergMagnetization {
 }
 
 impl Magnetization for HeisenbergMagnetization {
+    type SpinType = HeisenbergSpin;
+
     fn magnitude(&self) -> f64 {
         let HeisenbergMagnetization(a) = self;
         a.iter().map(|i| i * i).sum::<f64>().sqrt()
+    }
+
+    fn orientation(&self) -> Self::SpinType {
+        let HeisenbergMagnetization(a) = self;
+        let magnitude = self.magnitude();
+        HeisenbergSpin([a[0] / magnitude, a[1] / magnitude, a[2] / magnitude])
     }
 }
 
@@ -285,6 +308,14 @@ impl Add for HeisenbergMagnetization {
         let HeisenbergMagnetization(a) = self;
         let HeisenbergMagnetization(b) = other;
         HeisenbergMagnetization([a[0] + b[0], a[1] + b[1], a[2] + b[2]])
+    }
+}
+
+impl AddAssign for HeisenbergMagnetization {
+    fn add_assign(&mut self, other: HeisenbergMagnetization) {
+        let HeisenbergMagnetization(a) = self;
+        let HeisenbergMagnetization(b) = other;
+        *self = HeisenbergMagnetization([a[0] + b[0], a[1] + b[1], a[2] + b[2]]);
     }
 }
 
