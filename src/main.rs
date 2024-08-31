@@ -22,13 +22,13 @@ where
     S: Spin,
     T: HamiltonianComponent<S>,
 {
-    let mut integrator = MetropolisIntegrator::<Pcg64>::new(2.0);
+    let mut integrator = MetropolisIntegrator::<Pcg64>::new(5.0);
     let mut state = integrator.state(len);
     loop {
         let relax = 1000;
-        let steps = 10000;
+        let steps = 100000;
         let mut energy_sum = 0.0;
-        let mut magnetization_sum = S::MagnetizationType::new();
+        let mut magnetization_sum = 0.0;
         let mut mag_square_sum = 0.0;
         let mut mag_to_the_fourth_sum = 0.0;
         for _ in 0..relax {
@@ -37,18 +37,17 @@ where
         for _ in 0..steps {
             state = integrator.step(&hamiltonian, &state);
             energy_sum += hamiltonian.total_energy(&state);
-            let magnetization = state.magnetization();
-            magnetization_sum += magnetization.clone();
-            mag_square_sum += (magnetization.magnitude() / len as f64).powi(2);
-            mag_to_the_fourth_sum += (magnetization.magnitude() / len as f64).powi(4);
+            let magnetization = state.magnetization().magnitude() / len as f64;
+            magnetization_sum += magnetization;
+            mag_square_sum += magnetization.powi(2);
+            mag_to_the_fourth_sum += magnetization.powi(4);
         }
         println!(
             "{} {} {} {} {}",
             integrator.temp(),
             energy_sum / steps as f64,
-            magnetization_sum.magnitude() / len as f64 / steps as f64,
-            (mag_square_sum / steps as f64
-                - (magnetization_sum.magnitude() / len as f64 / steps as f64).powi(2))
+            magnetization_sum / steps as f64,
+            (mag_square_sum / steps as f64 - (magnetization_sum / steps as f64).powi(2))
                 / integrator.temp(),
             1.0 - (mag_to_the_fourth_sum / steps as f64) / 3.0
                 * (mag_square_sum / steps as f64).powi(2)

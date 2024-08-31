@@ -3,7 +3,7 @@
 //! of materials.
 
 use std::iter::Sum;
-use std::ops::{Add, AddAssign};
+use std::ops::Add;
 
 use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
@@ -30,9 +30,7 @@ pub trait Spin: Clone + Add<Self, Output = Self::MagnetizationType> {
     fn dot(&self, other: &Self) -> f64;
 }
 
-pub trait Magnetization:
-    Default + Clone + Add<Self, Output = Self> + Sum<Self::SpinType> + AddAssign
-{
+pub trait Magnetization: Default + Clone + Add<Self, Output = Self> + Sum<Self::SpinType> {
     type SpinType: Spin;
 
     fn new() -> Self
@@ -192,12 +190,6 @@ impl Add for IsingMagnetization {
     }
 }
 
-impl AddAssign for IsingMagnetization {
-    fn add_assign(&mut self, other: IsingMagnetization) {
-        *self = self.clone() + other;
-    }
-}
-
 impl Add<IsingSpin> for IsingMagnetization {
     type Output = IsingMagnetization;
 
@@ -326,14 +318,6 @@ impl Add for HeisenbergMagnetization {
         let HeisenbergMagnetization(a) = self;
         let HeisenbergMagnetization(b) = other;
         HeisenbergMagnetization([a[0] + b[0], a[1] + b[1], a[2] + b[2]])
-    }
-}
-
-impl AddAssign for HeisenbergMagnetization {
-    fn add_assign(&mut self, other: HeisenbergMagnetization) {
-        let HeisenbergMagnetization(a) = self;
-        let HeisenbergMagnetization(b) = other;
-        *self = HeisenbergMagnetization([a[0] + b[0], a[1] + b[1], a[2] + b[2]]);
     }
 }
 
