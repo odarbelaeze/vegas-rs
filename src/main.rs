@@ -15,20 +15,25 @@ use vegas_lattice::{Axis, Lattice};
 
 use vegas::energy::{Exchage, HamiltonianComponent};
 use vegas::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
-use vegas::state::{IsingMagnetization, IsingSpin, Magnetization, State};
+use vegas::state::{HeisenbergSpin, IsingSpin, Magnetization, Spin};
 
-fn cool_down<T>(hamiltonian: T, len: usize)
+fn cool_down<T, S>(hamiltonian: T, len: usize)
 where
-    T: HamiltonianComponent<IsingSpin>,
+    S: Spin,
+    T: HamiltonianComponent<S>,
 {
-    let mut integrator = MetropolisIntegrator::<Pcg64>::new(3.0);
+    let mut integrator = MetropolisIntegrator::<Pcg64>::new(2.0);
     let mut state = integrator.state(len);
     loop {
+        let relax = 1000;
         let steps = 10000;
         let mut energy_sum = 0.0;
-        let mut magnetization_sum = IsingMagnetization::new();
+        let mut magnetization_sum = S::MagnetizationType::new();
         let mut mag_square_sum = 0.0;
         let mut mag_to_the_fourth_sum = 0.0;
+        for _ in 0..relax {
+            state = integrator.step(&hamiltonian, &state);
+        }
         for _ in 0..steps {
             state = integrator.step(&hamiltonian, &state);
             energy_sum += hamiltonian.total_energy(&state);
@@ -38,57 +43,34 @@ where
             mag_to_the_fourth_sum += (magnetization.magnitude() / len as f64).powi(4);
         }
         println!(
-            "{} {} {} {}",
+            "{} {} {} {} {}",
             integrator.temp(),
             energy_sum / steps as f64,
-            magnetization_sum.magnitude() / steps as f64,
+            magnetization_sum.magnitude() / len as f64 / steps as f64,
+            (mag_square_sum / steps as f64
+                - (magnetization_sum.magnitude() / len as f64 / steps as f64).powi(2))
+                / integrator.temp(),
             1.0 - (mag_to_the_fourth_sum / steps as f64) / 3.0
                 * (mag_square_sum / steps as f64).powi(2)
         );
-        if integrator.temp() < 0.2 {
+        if integrator.temp() < 0.1 {
             break;
         }
         integrator.cool(0.05);
     }
 }
 
-fn bench(length: usize) {
+fn bench(length: usize, model: &str) {
     let lattice = Lattice::sc(1.0)
         .expand_along(Axis::X, length)
         .expand_along(Axis::Y, length)
-        .drop(Axis::Z);
+        .expand_along(Axis::Z, length);
     let len = lattice.sites().len();
     let hamiltonian = hamiltonian!(Exchage::from_lattice(&lattice));
-    let mut integrator = MetropolisIntegrator::<Pcg64>::new(3.0);
-    let mut state: State<IsingSpin> = integrator.state(len);
-    let mut current_step = 0;
-    println!("# Number of atoms generated {}", len);
-    loop {
-        let steps = 1000;
-        let mut energy_sum = 0.0;
-        let mut magnetization_sum = IsingMagnetization::new();
-        let mut mag_square_sum = 0.0;
-        let mut mag_to_the_fourth_sum = 0.0;
-        for _ in 0..steps {
-            state = integrator.step(&hamiltonian, &state);
-            energy_sum += hamiltonian.total_energy(&state);
-            let magnetization = state.magnetization();
-            magnetization_sum += magnetization.clone();
-            mag_square_sum += (magnetization.magnitude() / len as f64).powi(2);
-            mag_to_the_fourth_sum += (magnetization.magnitude() / len as f64).powi(4);
-            current_step += 1;
-        }
-        println!(
-            "{} {} {} {}",
-            integrator.temp(),
-            energy_sum / steps as f64,
-            magnetization_sum.magnitude() / steps as f64,
-            1.0 - (mag_to_the_fourth_sum / steps as f64) / 3.0
-                * (mag_square_sum / steps as f64).powi(2)
-        );
-        if current_step > 10000 {
-            break;
-        }
+    match model {
+        "ising" => cool_down::<_, IsingSpin>(hamiltonian, len),
+        "heisenberg" => cool_down::<_, HeisenbergSpin>(hamiltonian, len),
+        _ => eprintln!("Unknown model: {}", model),
     }
 }
 
@@ -104,7 +86,7 @@ fn bench_lattice(input: &str) -> Result<(), Box<dyn Error>> {
 
     let hamiltonian = hamiltonian!(Exchage::from_lattice(&lattice));
 
-    cool_down(hamiltonian, lattice.sites().len());
+    cool_down::<_, HeisenbergSpin>(hamiltonian, lattice.sites().len());
     Ok(())
 }
 
@@ -121,7 +103,7 @@ fn check_error(res: Result<(), Box<dyn Error>>) {
 #[derive(Debug, Subcommand)]
 enum SubCommand {
     #[command(about = "Run benchmark")]
-    Bench { length: usize },
+    Bench { model: String, length: usize },
     #[command(about = "Simulate the given lattice")]
     Lattice { lattice: String },
 }
@@ -136,7 +118,7 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
     match cli.subcmd {
-        SubCommand::Bench { length } => bench(length),
+        SubCommand::Bench { length, model } => bench(length, &model),
         SubCommand::Lattice { lattice } => check_error(bench_lattice(&lattice)),
     }
 }

@@ -7,9 +7,10 @@ use std::ops::{Add, AddAssign};
 
 use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
+use rand_distr::Normal;
 
-/// This trait specifies what a spin is for me.
-pub trait Spin {
+/// This trait specifies what a spin is.
+pub trait Spin: Clone + Add<Self, Output = Self::MagnetizationType> {
     type MagnetizationType: Magnetization<SpinType = Self>;
 
     /// New up an up Spin, this depends on what you're calling up.
@@ -29,9 +30,17 @@ pub trait Spin {
     fn dot(&self, other: &Self) -> f64;
 }
 
-pub trait Magnetization {
+pub trait Magnetization:
+    Default + Clone + Add<Self, Output = Self> + Sum<Self::SpinType> + AddAssign
+{
     type SpinType: Spin;
 
+    fn new() -> Self
+    where
+        Self: Sized,
+    {
+        Default::default()
+    }
     fn magnitude(&self) -> f64;
     fn orientation(&self) -> Self::SpinType;
 }
@@ -230,15 +239,16 @@ impl Spin for HeisenbergSpin {
     /// Gerate a random Heisenberg spin using the Marsaglia method for sphere
     /// point picking.
     fn rand<T: Rng>(rng: &mut T) -> Self {
-        loop {
-            let (a, b) = rng.gen::<(f64, f64)>();
-            let sum = a * a + b * b;
-            if sum >= 1f64 {
-                continue;
-            }
-            let dif = (1f64 - a * a - b * b).sqrt();
-            return HeisenbergSpin([2f64 * a * dif, 2f64 * b * dif, 1f64 - 2f64 * sum]);
+        let distribution = Normal::new(0f64, 1f64).unwrap();
+        let x = distribution.sample(rng);
+        let y = distribution.sample(rng);
+        let z = distribution.sample(rng);
+        let sum = x * x + y * y + z * z;
+        if sum == 0f64 {
+            return HeisenbergSpin::up();
         }
+        let norm = 1f64 / sum.sqrt();
+        HeisenbergSpin([x * norm, y * norm, z * norm])
     }
 
     fn interact(&self, other: &Self) -> f64 {
@@ -290,6 +300,12 @@ impl Magnetization for HeisenbergMagnetization {
 impl Default for HeisenbergMagnetization {
     fn default() -> Self {
         HeisenbergMagnetization::new()
+    }
+}
+
+impl Sum<HeisenbergSpin> for HeisenbergMagnetization {
+    fn sum<I: Iterator<Item = HeisenbergSpin>>(iter: I) -> Self {
+        iter.fold(HeisenbergMagnetization::new(), |acc, i| acc + i)
     }
 }
 

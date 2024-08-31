@@ -76,10 +76,11 @@
 //! ```
 
 extern crate rand;
-extern crate rand_pcg;
+extern crate rand_distr;
 extern crate sprs;
 extern crate vegas_lattice;
 
 pub mod energy;
 pub mod integrator;
+pub mod observables;
 pub mod state;
