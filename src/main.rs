@@ -10,67 +10,56 @@ use std::fs::File;
 use std::io::Read;
 
 use clap::{Parser, Subcommand};
+use rand::SeedableRng;
 use rand_pcg::Pcg64;
-use vegas::observables::Sensor;
+use vegas::program::CurieTemp;
 use vegas_lattice::{Axis, Lattice};
 
-use vegas::energy::{Exchage, HamiltonianComponent};
-use vegas::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
-use vegas::state::{HeisenbergSpin, IsingSpin, Spin};
+use vegas::energy::Exchage;
+use vegas::integrator::MetropolisIntegrator;
+use vegas::state::{HeisenbergSpin, IsingSpin, State};
 
-fn cool_down<T, S>(hamiltonian: T, len: usize)
-where
-    S: Spin,
-    T: HamiltonianComponent<S>,
-{
-    let mut integrator = MetropolisIntegrator::<Pcg64>::new(2.5);
-    let mut state = integrator.state(len);
-    loop {
-        let relax = 1000;
-        let steps = 10000;
-        let mut sensor = Sensor::new(integrator.temp());
-        for _ in 0..relax {
-            state = integrator.step(&hamiltonian, &state);
-        }
-        for _ in 0..steps {
-            state = integrator.step(&hamiltonian, &state);
-            sensor.observe(&hamiltonian, &state);
-        }
-        println!("{}", sensor);
-        integrator.cool(0.05);
-        if integrator.temp() < std::f64::EPSILON {
-            break;
-        }
-    }
-}
-
-fn bench(length: usize, model: &str) {
-    let lattice = Lattice::sc(1.0)
-        .expand_along(Axis::X, length)
-        .expand_along(Axis::Y, length)
-        .expand_along(Axis::Z, length);
-    let len = lattice.sites().len();
+fn bench(lattice: Lattice, model: &str) {
     let hamiltonian = hamiltonian!(Exchage::from_lattice(&lattice));
     match model {
-        "ising" => cool_down::<_, IsingSpin>(hamiltonian, len),
-        "heisenberg" => cool_down::<_, HeisenbergSpin>(hamiltonian, len),
+        "ising" => {
+            let program = CurieTemp::default().with_max_temp(5.0);
+            let mut rng = Pcg64::from_entropy();
+            let state = State::<IsingSpin>::rand_with_size(lattice.sites().len(), &mut rng);
+            let mut integrator = MetropolisIntegrator::new(rng);
+            program.run(&mut integrator, &hamiltonian, state);
+        }
+        "heisenberg" => {
+            let program = CurieTemp::default().with_max_temp(2.5);
+            let mut rng = Pcg64::from_entropy();
+            let state = State::<HeisenbergSpin>::rand_with_size(lattice.sites().len(), &mut rng);
+            let mut integrator = MetropolisIntegrator::new(rng);
+            program.run(&mut integrator, &hamiltonian, state);
+        }
         _ => eprintln!("Unknown model: {}", model),
     }
 }
 
-fn bench_lattice(input: &str) -> Result<(), Box<dyn Error>> {
+fn bench_model(length: usize, model: &str) {
+    let lattice = Lattice::sc(1.0)
+        .expand_along(Axis::X, length)
+        .expand_along(Axis::Y, length)
+        .expand_along(Axis::Z, length);
+    bench(lattice, model);
+}
+
+fn bench_lattice(model: &str, input: &str) -> Result<(), Box<dyn Error>> {
     let mut data = String::new();
     let mut file = File::open(input)?;
     file.read_to_string(&mut data)?;
     let lattice: Lattice = data.parse()?;
-    println!("# Successfuly read the lattice!");
 
+    println!("# Successfuly read the lattice!");
     println!("# Simulating with {} sites", lattice.sites().len());
     println!("# Simulating with {} exchanges", lattice.vertices().len());
 
-    let hamiltonian = hamiltonian!(Exchage::from_lattice(&lattice));
+    bench(lattice, model);
 
-    cool_down::<_, HeisenbergSpin>(hamiltonian, lattice.sites().len());
     Ok(())
 }
 
@@ -89,7 +78,7 @@ enum SubCommand {
     #[command(about = "Run benchmark")]
     Bench { model: String, length: usize },
     #[command(about = "Simulate the given lattice")]
-    Lattice { lattice: String },
+    Lattice { model: String, lattice: String },
 }
 
 #[derive(Parser, Debug)]
@@ -102,7 +91,7 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
     match cli.subcmd {
-        SubCommand::Bench { length, model } => bench(length, &model),
-        SubCommand::Lattice { lattice } => check_error(bench_lattice(&lattice)),
+        SubCommand::Bench { length, model } => bench_model(length, &model),
+        SubCommand::Lattice { lattice, model } => check_error(bench_lattice(&model, &lattice)),
     }
 }
