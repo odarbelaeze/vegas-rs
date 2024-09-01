@@ -11,51 +11,36 @@ use std::io::Read;
 
 use clap::{Parser, Subcommand};
 use rand_pcg::Pcg64;
+use vegas::observables::Sensor;
 use vegas_lattice::{Axis, Lattice};
 
 use vegas::energy::{Exchage, HamiltonianComponent};
 use vegas::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
-use vegas::state::{HeisenbergSpin, IsingSpin, Magnetization, Spin};
+use vegas::state::{HeisenbergSpin, IsingSpin, Spin};
 
 fn cool_down<T, S>(hamiltonian: T, len: usize)
 where
     S: Spin,
     T: HamiltonianComponent<S>,
 {
-    let mut integrator = MetropolisIntegrator::<Pcg64>::new(5.0);
+    let mut integrator = MetropolisIntegrator::<Pcg64>::new(2.5);
     let mut state = integrator.state(len);
     loop {
         let relax = 1000;
-        let steps = 100000;
-        let mut energy_sum = 0.0;
-        let mut magnetization_sum = 0.0;
-        let mut mag_square_sum = 0.0;
-        let mut mag_to_the_fourth_sum = 0.0;
+        let steps = 10000;
+        let mut sensor = Sensor::new(integrator.temp());
         for _ in 0..relax {
             state = integrator.step(&hamiltonian, &state);
         }
         for _ in 0..steps {
             state = integrator.step(&hamiltonian, &state);
-            energy_sum += hamiltonian.total_energy(&state);
-            let magnetization = state.magnetization().magnitude() / len as f64;
-            magnetization_sum += magnetization;
-            mag_square_sum += magnetization.powi(2);
-            mag_to_the_fourth_sum += magnetization.powi(4);
+            sensor.observe(&hamiltonian, &state);
         }
-        println!(
-            "{} {} {} {} {}",
-            integrator.temp(),
-            energy_sum / steps as f64,
-            magnetization_sum / steps as f64,
-            (mag_square_sum / steps as f64 - (magnetization_sum / steps as f64).powi(2))
-                / integrator.temp(),
-            1.0 - (mag_to_the_fourth_sum / steps as f64) / 3.0
-                * (mag_square_sum / steps as f64).powi(2)
-        );
-        if integrator.temp() < 0.1 {
+        println!("{}", sensor);
+        integrator.cool(0.05);
+        if integrator.temp() < std::f64::EPSILON {
             break;
         }
-        integrator.cool(0.05);
     }
 }
 

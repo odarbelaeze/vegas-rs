@@ -82,4 +82,5 @@ extern crate vegas_lattice;
 
 pub mod energy;
 pub mod integrator;
+pub mod observables;
 pub mod state;
