@@ -46,7 +46,6 @@
 //! * `Compound` - A hamiltonian that combines multiple hamiltonians.
 
 extern crate rand;
-extern crate rand_distr;
 extern crate sprs;
 extern crate vegas_lattice;
 

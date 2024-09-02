@@ -7,7 +7,6 @@ use std::ops::Add;
 
 use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
-use rand_distr::Normal;
 
 /// This trait specifies what a spin is.
 pub trait Spin: Clone + Add<Self, Output = Self::MagnetizationType> {
@@ -231,16 +230,18 @@ impl Spin for HeisenbergSpin {
     /// Gerate a random Heisenberg spin using the Marsaglia method for sphere
     /// point picking.
     fn rand<T: Rng>(rng: &mut T) -> Self {
-        let distribution = Normal::new(0f64, 1f64).unwrap();
-        let x = distribution.sample(rng);
-        let y = distribution.sample(rng);
-        let z = distribution.sample(rng);
-        let sum = x * x + y * y + z * z;
-        if sum == 0f64 {
-            return HeisenbergSpin::up();
+        loop {
+            let distribution = Uniform::new(-1.0, 1.0);
+            let x1 = distribution.sample(rng);
+            let x2 = distribution.sample(rng);
+            if x1 * x1 + x2 * x2 >= 1f64 {
+                continue;
+            }
+            let x = 2f64 * x1 * (1f64 - x1 * x1 - x2 * x2).sqrt();
+            let y = 2f64 * x2 * (1f64 - x1 * x1 - x2 * x2).sqrt();
+            let z = 1f64 - 2f64 * (x1 * x1 + x2 * x2);
+            return HeisenbergSpin([x, y, z]);
         }
-        let norm = 1f64 / sum.sqrt();
-        HeisenbergSpin([x * norm, y * norm, z * norm])
     }
 
     fn interact(&self, other: &Self) -> f64 {
