@@ -9,7 +9,7 @@ use std::error::Error;
 use std::fs::File;
 use std::io::Read;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
 use vegas::program::CurieTemp;
@@ -19,28 +19,27 @@ use vegas::energy::Exchage;
 use vegas::integrator::MetropolisIntegrator;
 use vegas::state::{HeisenbergSpin, IsingSpin, State};
 
-fn bench(lattice: Lattice, model: &str) {
+fn bench(lattice: Lattice, model: Model) {
     let hamiltonian = hamiltonian!(Exchage::from_lattice(&lattice));
     match model {
-        "ising" => {
+        Model::Ising => {
             let program = CurieTemp::default().with_max_temp(5.0);
             let mut rng = Pcg64::from_entropy();
             let state = State::<IsingSpin>::rand_with_size(lattice.sites().len(), &mut rng);
             let mut integrator = MetropolisIntegrator::new(rng);
             program.run(&mut integrator, &hamiltonian, state);
         }
-        "heisenberg" => {
+        Model::Heisenberg => {
             let program = CurieTemp::default().with_max_temp(2.5);
             let mut rng = Pcg64::from_entropy();
             let state = State::<HeisenbergSpin>::rand_with_size(lattice.sites().len(), &mut rng);
             let mut integrator = MetropolisIntegrator::new(rng);
             program.run(&mut integrator, &hamiltonian, state);
         }
-        _ => eprintln!("Unknown model: {}", model),
     }
 }
 
-fn bench_model(length: usize, model: &str) {
+fn bench_model(model: Model, length: usize) {
     let lattice = Lattice::sc(1.0)
         .expand_along(Axis::X, length)
         .expand_along(Axis::Y, length)
@@ -48,7 +47,7 @@ fn bench_model(length: usize, model: &str) {
     bench(lattice, model);
 }
 
-fn bench_lattice(model: &str, input: &str) -> Result<(), Box<dyn Error>> {
+fn bench_lattice(model: Model, input: &str) -> Result<(), Box<dyn Error>> {
     let mut data = String::new();
     let mut file = File::open(input)?;
     file.read_to_string(&mut data)?;
@@ -73,12 +72,28 @@ fn check_error(res: Result<(), Box<dyn Error>>) {
     }
 }
 
+#[derive(Debug, Clone, ValueEnum)]
+enum Model {
+    Ising,
+    Heisenberg,
+}
+
 #[derive(Debug, Subcommand)]
 enum SubCommand {
     #[command(about = "Run benchmark")]
-    Bench { model: String, length: usize },
+    Bench {
+        /// Model to run
+        model: Model,
+        /// Length of the side lattice
+        length: usize,
+    },
     #[command(about = "Simulate the given lattice")]
-    Lattice { model: String, lattice: String },
+    Lattice {
+        /// Model to run
+        model: Model,
+        /// Path to the lattice file
+        lattice: String,
+    },
 }
 
 #[derive(Parser, Debug)]
@@ -91,7 +106,7 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
     match cli.subcmd {
-        SubCommand::Bench { length, model } => bench_model(length, &model),
-        SubCommand::Lattice { lattice, model } => check_error(bench_lattice(&model, &lattice)),
+        SubCommand::Bench { length, model } => bench_model(model, length),
+        SubCommand::Lattice { lattice, model } => check_error(bench_lattice(model, &lattice)),
     }
 }
