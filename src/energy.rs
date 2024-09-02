@@ -3,25 +3,26 @@
 //! Energy components are parts of the Hamiltonian that can be aggregated.
 
 use crate::state::{Spin, State};
-use sprs::CsMat;
+use sprs::{CsMat, TriMat};
 use std::iter::Iterator;
 use std::marker::PhantomData;
+use vegas_lattice::Lattice;
 
 /// A trait that represents an energy component of the system.
 ///
 /// An energy component is characterized by the fact that it can
 /// compute the energy of a given site for a given state.
-pub trait HamiltonianComponent<T: Spin> {
+pub trait HamiltonianComponent<S: Spin> {
     /// Get the energy of a given site for a state.
     ///
     /// Panics:
     ///
     /// This function will panic of the index is greater than the size
     /// of the state vector (business as usual)
-    fn energy(&self, state: &State<T>, index: usize) -> f64;
+    fn energy(&self, state: &State<S>, index: usize) -> f64;
 
     /// Compute the total energy of a state.
-    fn total_energy(&self, state: &State<T>) -> f64 {
+    fn total_energy(&self, state: &State<S>) -> f64 {
         (0..state.len())
             .map(|i| self.energy(state, i))
             .fold(0f64, |s, i| s + i)
@@ -48,13 +49,19 @@ impl<T: Spin> HamiltonianComponent<T> for Gauge {
 }
 
 /// Strong preference for a given axis.
-pub struct UniaxialAnisotropy<T: Spin> {
-    reference: T,
+pub struct UniaxialAnisotropy<S>
+where
+    S: Spin,
+{
+    reference: S,
     strength: f64,
 }
 
-impl<T: Spin> UniaxialAnisotropy<T> {
-    pub fn new(s: T, k: f64) -> Self {
+impl<S> UniaxialAnisotropy<S>
+where
+    S: Spin,
+{
+    pub fn new(s: S, k: f64) -> Self {
         Self {
             reference: s,
             strength: k,
@@ -62,28 +69,38 @@ impl<T: Spin> UniaxialAnisotropy<T> {
     }
 }
 
-impl<T: Spin> HamiltonianComponent<T> for UniaxialAnisotropy<T> {
-    fn energy(&self, state: &State<T>, index: usize) -> f64 {
+impl<S> HamiltonianComponent<S> for UniaxialAnisotropy<S>
+where
+    S: Spin,
+{
+    fn energy(&self, state: &State<S>, index: usize) -> f64 {
         debug_assert!(index < state.len());
-        state.spins()[index].interact(&self.reference).powi(2) * self.strength
+        let s = state.at(index);
+        s.dot(&self.reference).powi(2) * self.strength
     }
 
-    fn total_energy(&self, state: &State<T>) -> f64 {
+    fn total_energy(&self, state: &State<S>) -> f64 {
         state
             .spins()
             .iter()
-            .map(|s| s.interact(&self.reference).powi(2))
-            .fold(0f64, |s, i| s + i)
+            .map(|s| (s.dot(&self.reference)).powi(2))
+            .sum()
     }
 }
 
 /// Energy resulting from a magnetic field.
-pub struct ZeemanEnergy<T: Spin> {
-    reference: T,
+pub struct ZeemanEnergy<S>
+where
+    S: Spin,
+{
+    reference: S,
     strength: f64,
 }
 
-impl<T: Spin> ZeemanEnergy<T> {
+impl<T> ZeemanEnergy<T>
+where
+    T: Spin,
+{
     pub fn new(s: T, h: f64) -> Self {
         Self {
             reference: s,
@@ -92,18 +109,22 @@ impl<T: Spin> ZeemanEnergy<T> {
     }
 }
 
-impl<T: Spin> HamiltonianComponent<T> for ZeemanEnergy<T> {
-    fn energy(&self, state: &State<T>, index: usize) -> f64 {
+impl<S> HamiltonianComponent<S> for ZeemanEnergy<S>
+where
+    S: Spin,
+{
+    fn energy(&self, state: &State<S>, index: usize) -> f64 {
         debug_assert!(index < state.len());
-        -state.spins()[index].interact(&self.reference) * self.strength
+        let s = state.at(index);
+        s.dot(&self.reference) * self.strength
     }
 
-    fn total_energy(&self, state: &State<T>) -> f64 {
+    fn total_energy(&self, state: &State<S>) -> f64 {
         -state
             .spins()
             .iter()
-            .map(|s| s.interact(&self.reference))
-            .fold(0f64, |s, i| s + i)
+            .map(|s| s.dot(&self.reference))
+            .sum::<f64>()
     }
 }
 
@@ -116,16 +137,32 @@ impl Exchage {
     pub fn new(exc: CsMat<f64>) -> Self {
         Self { exchange: exc }
     }
+
+    pub fn from_lattice(lattice: &Lattice) -> Self {
+        let nsites = lattice.sites().len();
+        let mut mat = TriMat::new((nsites, nsites));
+        for vertex in lattice.vertices() {
+            if vertex.source() <= vertex.target() {
+                mat.add_triplet(vertex.source(), vertex.target(), 1.0);
+                mat.add_triplet(vertex.target(), vertex.source(), 1.0);
+            }
+        }
+        let csr = mat.to_csr();
+        Self::new(csr)
+    }
 }
 
-impl<T: Spin> HamiltonianComponent<T> for Exchage {
-    fn energy(&self, state: &State<T>, index: usize) -> f64 {
+impl<S> HamiltonianComponent<S> for Exchage
+where
+    S: Spin,
+{
+    fn energy(&self, state: &State<S>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         let site = state.at(index);
         if let Some(row) = self.exchange.outer_view(index) {
             row.iter()
                 .map(|(nbi, exc)| (state.at(nbi), exc))
-                .map(|(nb, exc)| -exc * site.interact(nb))
+                .map(|(nb, exc)| -exc * (site.dot(nb)))
                 .fold(0f64, |s, i| s + i)
         } else {
             // Just retun 0.0 for out of ranges.
@@ -133,7 +170,7 @@ impl<T: Spin> HamiltonianComponent<T> for Exchage {
         }
     }
 
-    fn total_energy(&self, state: &State<T>) -> f64 {
+    fn total_energy(&self, state: &State<S>) -> f64 {
         (0..state.len())
             .map(|i| self.energy(state, i))
             .fold(0f64, |s, i| s + i)
@@ -145,15 +182,15 @@ impl<T: Spin> HamiltonianComponent<T> for Exchage {
 ///
 /// The key point here is that you one of the energy components
 /// can be a compound energy itself.
-pub struct Compound<T, U, V>
+pub struct Compound<S, U, V>
 where
-    T: Spin,
-    U: HamiltonianComponent<T>,
-    V: HamiltonianComponent<T>,
+    S: Spin,
+    U: HamiltonianComponent<S>,
+    V: HamiltonianComponent<S>,
 {
     a: U,
     b: V,
-    phantom: PhantomData<T>,
+    phantom: PhantomData<S>,
 }
 
 impl<T, U, V> Compound<T, U, V>
@@ -171,13 +208,13 @@ where
     }
 }
 
-impl<T, U, V> HamiltonianComponent<T> for Compound<T, U, V>
+impl<S, U, V> HamiltonianComponent<S> for Compound<S, U, V>
 where
-    T: Spin,
-    U: HamiltonianComponent<T>,
-    V: HamiltonianComponent<T>,
+    S: Spin,
+    U: HamiltonianComponent<S>,
+    V: HamiltonianComponent<S>,
 {
-    fn energy(&self, state: &State<T>, index: usize) -> f64 {
+    fn energy(&self, state: &State<S>, index: usize) -> f64 {
         self.a.energy(state, index) + self.b.energy(state, index)
     }
 }

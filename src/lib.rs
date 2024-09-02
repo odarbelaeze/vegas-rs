@@ -1,12 +1,11 @@
-//! `vegas` is a library that allows you to create atomistic simulations
-//! of magnetic materials.
+//! `vegas` is a library that allows you to run atomistic simulations of
+//! magnetic materials.
 //!
 //! # Table of Contentsble
 //!
 //! * [Installation](#installation)
 //! * [Spins](#spins)
 //! * [Hamiltonians](#hamiltonians)
-//! * [Example](#example)
 //!
 //! # Installation
 //!
@@ -45,36 +44,14 @@
 //! * `UniaxialAnisotropy` - A hamiltonian that calculates the uniaxial anisotropy energy of a spin system.
 //! * `ZeemanEnergy` - A hamiltonian that calculates the Zeeman energy of a spin system.
 //! * `Compound` - A hamiltonian that combines multiple hamiltonians.
-//!
-//! # Example
-//!
-//! ```rust
-//! use vegas::hamiltonian;
-//! use vegas::integrator::{Integrator, MetropolisIntegrator, StateGenerator};
-//! use vegas::energy::{HamiltonianComponent, Gauge};
-//! use vegas::state::{HeisenbergSpin, State};
-//!
-//! let hamiltonian = hamiltonian!(Gauge::new(10.0));
-//! let mut integrator = MetropolisIntegrator::new(3.0);
-//! let mut state: State<HeisenbergSpin> = integrator.state(1000);
-//! loop {
-//!     let steps = 1000;
-//!     let mut energy_sum = 0.0;
-//!     for _ in 0..steps {
-//!         state = integrator.step(&hamiltonian, &state);
-//!         energy_sum += hamiltonian.total_energy(&state)
-//!     }
-//!     println!("{} {}", integrator.temp(), energy_sum / steps as f64);
-//!     if integrator.temp() < 0.1 {
-//!         break;
-//!     }
-//!     integrator.cool(0.1);
-//! }
-//! ```
 
 extern crate rand;
 extern crate sprs;
+extern crate vegas_lattice;
 
 pub mod energy;
 pub mod integrator;
+pub mod observables;
+pub mod program;
 pub mod state;
+pub mod termostat;
