@@ -39,7 +39,8 @@ impl Accumulator {
     }
 
     pub fn binder_cumulant(&self) -> f64 {
-        1.0 - self.sum_fourth / self.count as f64 / 3.0 * (self.sum_sq / self.count as f64).powi(2)
+        1.0 - (self.sum_fourth / self.count as f64)
+            / (3.0 * (self.sum_sq / self.count as f64).powi(2))
     }
 }
 
