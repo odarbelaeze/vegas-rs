@@ -145,7 +145,6 @@ impl Relax {
             state = integrator.step(hamiltonian, state, &termostat);
             sensor.observe(hamiltonian, &state);
         }
-        println!("{}", sensor);
         Ok(state)
     }
 }

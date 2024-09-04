@@ -69,7 +69,8 @@ impl Sensor {
         H: HamiltonianComponent<S>,
         S: Spin,
     {
-        self.energy.add(hamiltonian.total_energy(state));
+        self.energy
+            .add(hamiltonian.total_energy(state) / state.len() as f64);
         self.magnetization
             .add(state.magnetization().magnitude() / state.len() as f64);
     }

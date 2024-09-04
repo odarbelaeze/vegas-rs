@@ -52,17 +52,17 @@ fn bench_ising(length: usize) -> Result<()> {
         .drop(Axis::Z);
     let hamiltonian = hamiltonian!(Exchage::from_lattice(&lattice));
     let cool_rate = 0.05;
-    let relax = Relax::default().with_steps(100000).with_temp(2.8);
+    let relax = Relax::default().with_steps(500000).with_temp(2.8);
     let curie = CurieTemp::default()
-        .with_steps(100000)
-        .with_max_temp(2.8 - cool_rate)
+        .with_steps(500000)
+        .with_max_temp(2.8)
         .with_min_temp(1.8)
         .with_cool_rate(cool_rate);
     let mut rng = Pcg64::from_entropy();
     let state = State::<IsingSpin>::rand_with_size(lattice.sites().len(), &mut rng);
     let mut integrator = MetropolisIntegrator::new(rng);
     relax
-        .run(&mut integrator, &hamiltonian, state.clone())
+        .run(&mut integrator, &hamiltonian, state)
         .and_then(|state| curie.run(&mut integrator, &hamiltonian, state))
         .map(|_| ())
 }
