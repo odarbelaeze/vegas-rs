@@ -387,8 +387,10 @@ mod tests {
     use super::State;
     use super::{PerturbableSpin, Spin};
     use rand::thread_rng;
+    use rand::SeedableRng;
+    use rand_pcg::Pcg64;
 
-    fn real_close(a: f64, b: f64) {
+    fn assert_real_close(a: f64, b: f64) {
         assert!((a - b).abs() < 1e-15);
     }
 
@@ -396,13 +398,14 @@ mod tests {
     fn ising_spin_multiplies_correctly() {
         let up = IsingSpin::up();
         let down = IsingSpin::down();
-        let rand = IsingSpin::rand(&mut thread_rng());
-        real_close(up.dot(&up), 1.0);
-        real_close(up.dot(&down), -1.0);
-        real_close(down.dot(&up), -1.0);
-        real_close(down.dot(&down), 1.0);
-        real_close(rand.dot(&rand), 1.0);
-        real_close(rand.dot(&up) + rand.dot(&down), 0.0);
+        let mut rng = Pcg64::from_entropy();
+        let rand = IsingSpin::rand(&mut rng);
+        assert_real_close(up.dot(&up), 1.0);
+        assert_real_close(up.dot(&down), -1.0);
+        assert_real_close(down.dot(&up), -1.0);
+        assert_real_close(down.dot(&down), 1.0);
+        assert_real_close(rand.dot(&rand), 1.0);
+        assert_real_close(rand.dot(&up) + rand.dot(&down), 0.0);
     }
 
     #[test]
@@ -418,9 +421,9 @@ mod tests {
         let up = HeisenbergSpin::up();
         let down = HeisenbergSpin::down();
         let rand = HeisenbergSpin::rand(&mut thread_rng());
-        real_close(up.dot(&up), 1.0);
-        real_close(up.dot(&down), -1.0);
-        real_close(rand.dot(&rand), 1.0);
+        assert_real_close(up.dot(&up), 1.0);
+        assert_real_close(up.dot(&down), -1.0);
+        assert_real_close(rand.dot(&rand), 1.0);
     }
 
     #[test]
@@ -435,7 +438,7 @@ mod tests {
         for _ in 0..100 {
             let HeisenbergSpin(a) = HeisenbergSpin::rand(&mut thread_rng());
             let norm = a.iter().map(|i| i * i).fold(0f64, |s, i| s + i);
-            real_close(norm, 1.0);
+            assert_real_close(norm, 1.0);
         }
     }
 
