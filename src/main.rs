@@ -61,10 +61,9 @@ fn bench_ising(length: usize) -> Result<()> {
     let mut rng = Pcg64::from_entropy();
     let state = State::<IsingSpin>::rand_with_size(lattice.sites().len(), &mut rng);
     let mut integrator = MetropolisIntegrator::new(rng);
-    relax
-        .run(&mut integrator, &hamiltonian, state)
-        .and_then(|state| curie.run(&mut integrator, &hamiltonian, state))
-        .map(|_| ())
+    let state = relax.run(&mut integrator, &hamiltonian, state)?;
+    let _state = curie.run(&mut integrator, &hamiltonian, state)?;
+    Ok(())
 }
 
 fn bench_model(model: Model, length: usize) -> Result<()> {
