@@ -8,7 +8,7 @@ use crate::{
     integrator::Integrator,
     observables::Sensor,
     state::{Spin, State},
-    termostat::Termostat,
+    thermostat::Thermostat,
 };
 
 /// A program is a sequence of steps that can be run on a system.
@@ -105,19 +105,19 @@ impl CurieTemp {
         if self.cool_rate < f64::EPSILON {
             return Err(ProgramError::ZeroDelta.into());
         }
-        let mut termostat = Termostat::new(self.max_temp);
+        let mut thermostat = Thermostat::new(self.max_temp);
         loop {
-            let mut sensor = Sensor::new(termostat.temp());
+            let mut sensor = Sensor::new(thermostat.temp());
             for _ in 0..self.relax {
-                state = integrator.step(hamiltonian, state, &termostat, rng);
+                state = integrator.step(hamiltonian, state, &thermostat, rng);
             }
             for _ in 0..self.steps {
-                state = integrator.step(hamiltonian, state, &termostat, rng);
+                state = integrator.step(hamiltonian, state, &thermostat, rng);
                 sensor.observe(hamiltonian, &state);
             }
             println!("{}", sensor);
-            termostat.cool(self.cool_rate);
-            if termostat.temp() < self.min_temp {
+            thermostat.cool(self.cool_rate);
+            if thermostat.temp() < self.min_temp {
                 break;
             }
         }
@@ -175,10 +175,10 @@ impl Relax {
         if self.temp < f64::EPSILON {
             return Err(ProgramError::ZeroTemp.into());
         }
-        let termostat = Termostat::new(self.temp);
-        let mut sensor = Sensor::new(termostat.temp());
+        let thermostat = Thermostat::new(self.temp);
+        let mut sensor = Sensor::new(thermostat.temp());
         for _ in 0..self.steps {
-            state = integrator.step(hamiltonian, state, &termostat, rng);
+            state = integrator.step(hamiltonian, state, &thermostat, rng);
             sensor.observe(hamiltonian, &state);
         }
         Ok(state)

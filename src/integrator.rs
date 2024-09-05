@@ -6,7 +6,7 @@ use rand::Rng;
 use crate::{
     energy::HamiltonianComponent,
     state::{Flip, Spin, State},
-    termostat::Termostat,
+    thermostat::Thermostat,
 };
 
 /// An integrator is a method that allows you to sample the phase space of a
@@ -17,7 +17,7 @@ pub trait Integrator<S: Spin, T: HamiltonianComponent<S>> {
         &self,
         energy: &T,
         state: State<S>,
-        termostat: &Termostat,
+        thermostat: &Thermostat,
         rng: &mut R,
     ) -> State<S>;
 }
@@ -47,7 +47,7 @@ where
         &self,
         hamiltonian: &H,
         mut state: State<S>,
-        termostat: &Termostat,
+        thermostat: &Thermostat,
         rng: &mut R,
     ) -> State<S> {
         let sites = Uniform::new(0, state.len());
@@ -61,7 +61,7 @@ where
             if delta < 0.0 {
                 continue;
             }
-            if rng.gen::<f64>() < (-delta / termostat.temp()).exp() {
+            if rng.gen::<f64>() < (-delta / thermostat.temp()).exp() {
                 continue;
             }
             state.set_at(site, old_spin);
@@ -95,7 +95,7 @@ where
         &self,
         hamiltonian: &H,
         mut state: State<S>,
-        termostat: &Termostat,
+        thermostat: &Thermostat,
         rng: &mut R,
     ) -> State<S> {
         let sites = Uniform::new(0, state.len());
@@ -109,7 +109,7 @@ where
             if delta < 0.0 {
                 continue;
             }
-            if rng.gen::<f64>() < (-delta / termostat.temp()).exp() {
+            if rng.gen::<f64>() < (-delta / thermostat.temp()).exp() {
                 continue;
             }
             state.set_at(site, old_spin);

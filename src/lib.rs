@@ -55,4 +55,4 @@ pub mod integrator;
 pub mod observables;
 pub mod program;
 pub mod state;
-pub mod termostat;
+pub mod thermostat;
