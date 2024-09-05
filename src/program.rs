@@ -11,6 +11,24 @@ use crate::{
     termostat::Termostat,
 };
 
+/// A program is a sequence of steps that can be run on a system.
+pub trait Program {
+    /// Run the program on a system returning the last state.
+    fn run<S, H, I, R>(
+        &self,
+        integrator: &I,
+        hamiltonian: &H,
+        state: State<S>,
+        rng: &mut R,
+    ) -> Result<State<S>>
+    where
+        S: Spin,
+        H: HamiltonianComponent<S>,
+        I: Integrator<S, H>,
+        R: Rng;
+}
+
+/// A program that cools the system to find the Curie temperature.
 pub struct CurieTemp {
     max_temp: f64,
     min_temp: f64,
@@ -20,6 +38,7 @@ pub struct CurieTemp {
 }
 
 impl CurieTemp {
+    /// Create a new Curie temperature program.
     pub fn new(max_temp: f64, min_temp: f64, cool_rate: f64, relax: usize, steps: usize) -> Self {
         Self {
             max_temp,
@@ -30,31 +49,37 @@ impl CurieTemp {
         }
     }
 
-    pub fn with_max_temp(mut self, max_temp: f64) -> Self {
+    /// Set the maximum temperature.
+    pub fn set_max_temp(mut self, max_temp: f64) -> Self {
         self.max_temp = max_temp;
         self
     }
 
-    pub fn with_min_temp(mut self, min_temp: f64) -> Self {
+    /// Set the minimum temperature.
+    pub fn set_min_temp(mut self, min_temp: f64) -> Self {
         self.min_temp = min_temp;
         self
     }
 
-    pub fn with_cool_rate(mut self, cool_rate: f64) -> Self {
+    /// Set the cooling rate.
+    pub fn set_cool_rate(mut self, cool_rate: f64) -> Self {
         self.cool_rate = cool_rate;
         self
     }
 
-    pub fn with_relax(mut self, relax: usize) -> Self {
+    /// Set the number of relaxation steps.
+    pub fn set_relax(mut self, relax: usize) -> Self {
         self.relax = relax;
         self
     }
 
-    pub fn with_steps(mut self, steps: usize) -> Self {
+    /// Set the number of steps.
+    pub fn set_steps(mut self, steps: usize) -> Self {
         self.steps = steps;
         self
     }
 
+    /// Run the program.
     pub fn run<I, H, S, R>(
         &self,
         integrator: &I,
@@ -106,26 +131,31 @@ impl Default for CurieTemp {
     }
 }
 
+/// A program that relaxes the system.
 pub struct Relax {
     steps: usize,
     temp: f64,
 }
 
 impl Relax {
+    /// Create a new relaxation program.
     pub fn new(steps: usize, temp: f64) -> Self {
         Self { steps, temp }
     }
 
-    pub fn with_steps(mut self, steps: usize) -> Self {
+    /// Set the number of steps.
+    pub fn set_steps(mut self, steps: usize) -> Self {
         self.steps = steps;
         self
     }
 
-    pub fn with_temp(mut self, temp: f64) -> Self {
+    /// Set the temperature.
+    pub fn set_temp(mut self, temp: f64) -> Self {
         self.temp = temp;
         self
     }
 
+    /// Run the program.
     pub fn run<I, H, S, R>(
         &self,
         integrator: &I,

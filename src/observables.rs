@@ -1,3 +1,5 @@
+//! Observables module.
+
 use core::fmt;
 use std::fmt::{Display, Formatter};
 
@@ -50,6 +52,7 @@ impl Default for Accumulator {
     }
 }
 
+/// A sensor is a device that can measure the state of a system.
 pub struct Sensor {
     energy: Accumulator,
     magnetization: Accumulator,
@@ -57,6 +60,7 @@ pub struct Sensor {
 }
 
 impl Sensor {
+    /// Create a new sensor with a given beta.
     pub fn new(beta: f64) -> Sensor {
         Sensor {
             energy: Accumulator::new(),
@@ -64,6 +68,8 @@ impl Sensor {
             beta,
         }
     }
+
+    /// Observe the state of the system.
     pub fn observe<H, S>(&mut self, hamiltonian: &H, state: &State<S>)
     where
         H: HamiltonianComponent<S>,
@@ -75,26 +81,32 @@ impl Sensor {
             .add(state.magnetization().magnitude() / state.len() as f64);
     }
 
+    /// Get the beta of the sensor.
     pub fn beta(&self) -> f64 {
         self.beta
     }
 
+    /// Get the mean energy of the sensor.
     pub fn energy(&self) -> f64 {
         self.energy.mean()
     }
 
+    /// Get the specific heat of the sensor.
     pub fn specific_heat(&self) -> f64 {
         self.energy.variance() / self.beta
     }
 
+    /// Get the mean magnetization of the sensor.
     pub fn magnetization(&self) -> f64 {
         self.magnetization.mean()
     }
 
+    /// Get the susceptibility of the sensor.
     pub fn susceptibility(&self) -> f64 {
         self.magnetization.variance() / self.beta
     }
 
+    /// Get the Binder cumulant for the magnetization of the sensor.
     pub fn binder_cumulant(&self) -> f64 {
         self.magnetization.binder_cumulant()
     }
