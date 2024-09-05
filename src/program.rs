@@ -78,9 +78,17 @@ impl CurieTemp {
         self.steps = steps;
         self
     }
+}
 
+impl Default for CurieTemp {
+    fn default() -> Self {
+        Self::new(3.0, f64::EPSILON, 0.1, 1000, 20000)
+    }
+}
+
+impl Program for CurieTemp {
     /// Run the program.
-    pub fn run<I, H, S, R>(
+    fn run<S, H, I, R>(
         &self,
         integrator: &I,
         hamiltonian: &H,
@@ -125,12 +133,6 @@ impl CurieTemp {
     }
 }
 
-impl Default for CurieTemp {
-    fn default() -> Self {
-        Self::new(3.0, f64::EPSILON, 0.1, 1000, 20000)
-    }
-}
-
 /// A program that relaxes the system.
 pub struct Relax {
     steps: usize,
@@ -154,9 +156,17 @@ impl Relax {
         self.temp = temp;
         self
     }
+}
 
+impl Default for Relax {
+    fn default() -> Self {
+        Self::new(1000, 3.0)
+    }
+}
+
+impl Program for Relax {
     /// Run the program.
-    pub fn run<I, H, S, R>(
+    fn run<S, H, I, R>(
         &self,
         integrator: &I,
         hamiltonian: &H,
@@ -182,11 +192,5 @@ impl Relax {
             sensor.observe(hamiltonian, &state);
         }
         Ok(state)
-    }
-}
-
-impl Default for Relax {
-    fn default() -> Self {
-        Self::new(1000, 3.0)
     }
 }

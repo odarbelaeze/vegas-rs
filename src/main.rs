@@ -17,7 +17,7 @@ use vegas::{
     energy::Exchage,
     error::Result,
     integrator::{MetropolisFlipIntegrator, MetropolisIntegrator},
-    program::{CurieTemp, Relax},
+    program::{CurieTemp, Program, Relax},
     state::{HeisenbergSpin, IsingSpin, State},
 };
 
