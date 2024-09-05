@@ -11,14 +11,14 @@ use crate::{
 
 /// An integrator is a method that allows you to sample the phase space of a
 /// system.
-pub trait Integrator<S: Spin, T: HamiltonianComponent<S>> {
+pub trait Integrator<S: Spin, H: HamiltonianComponent<S>> {
     /// Perform a single step of the integrator.
     fn step<R: Rng>(
         &self,
-        energy: &T,
-        state: State<S>,
-        thermostat: &Thermostat,
         rng: &mut R,
+        thermostat: &Thermostat,
+        hamiltonian: &H,
+        state: State<S>,
     ) -> State<S>;
 }
 
@@ -39,16 +39,16 @@ impl MetropolisIntegrator {
 
 impl<S, H> Integrator<S, H> for MetropolisIntegrator
 where
-    S: Spin + Clone,
+    S: Spin,
     H: HamiltonianComponent<S>,
 {
     /// Perform a single step of the Metropolis integrator.
     fn step<R: Rng>(
         &self,
+        rng: &mut R,
+        thermostat: &Thermostat,
         hamiltonian: &H,
         mut state: State<S>,
-        thermostat: &Thermostat,
-        rng: &mut R,
     ) -> State<S> {
         let sites = Uniform::new(0, state.len());
         for _ in 0..state.len() {
@@ -87,16 +87,16 @@ impl MetropolisFlipIntegrator {
 
 impl<S, H> Integrator<S, H> for MetropolisFlipIntegrator
 where
-    S: Spin + Clone + Flip,
+    S: Spin + Flip,
     H: HamiltonianComponent<S>,
 {
     /// Perform a single step of the Metropolis integrator.
     fn step<R: Rng>(
         &self,
+        rng: &mut R,
+        thermostat: &Thermostat,
         hamiltonian: &H,
         mut state: State<S>,
-        thermostat: &Thermostat,
-        rng: &mut R,
     ) -> State<S> {
         let sites = Uniform::new(0, state.len());
         for _ in 0..state.len() {

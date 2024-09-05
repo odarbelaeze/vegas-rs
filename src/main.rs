@@ -27,19 +27,19 @@ fn bench(lattice: Lattice, model: Model) -> Result<()> {
         Model::Ising => {
             let program = CurieTemp::default().set_max_temp(5.0);
             let mut rng = Pcg64::from_entropy();
-            let state = State::<IsingSpin>::rand_with_size(lattice.sites().len(), &mut rng);
+            let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
             program
-                .run(&integrator, &hamiltonian, state, &mut rng)
+                .run(&mut rng, &integrator, &hamiltonian, state)
                 .map(|_| ())
         }
         Model::Heisenberg => {
             let program = CurieTemp::default().set_max_temp(2.5);
             let mut rng = Pcg64::from_entropy();
-            let state = State::<HeisenbergSpin>::rand_with_size(lattice.sites().len(), &mut rng);
+            let state = State::<HeisenbergSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
             program
-                .run(&integrator, &hamiltonian, state, &mut rng)
+                .run(&mut rng, &integrator, &hamiltonian, state)
                 .map(|_| ())
         }
     }
@@ -59,10 +59,10 @@ fn bench_ising(length: usize) -> Result<()> {
         .set_min_temp(1.8)
         .set_cool_rate(cool_rate);
     let mut rng = Pcg64::from_entropy();
-    let state = State::<IsingSpin>::rand_with_size(lattice.sites().len(), &mut rng);
+    let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
     let integrator = MetropolisFlipIntegrator::new();
-    let state = relax.run(&integrator, &hamiltonian, state, &mut rng)?;
-    let _state = curie.run(&integrator, &hamiltonian, state, &mut rng)?;
+    let state = relax.run(&mut rng, &integrator, &hamiltonian, state)?;
+    let _state = curie.run(&mut rng, &integrator, &hamiltonian, state)?;
     Ok(())
 }
 

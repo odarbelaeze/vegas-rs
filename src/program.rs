@@ -14,12 +14,12 @@ use crate::{
 /// A program is a sequence of steps that can be run on a system.
 pub trait Program {
     /// Run the program on a system returning the last state.
-    fn run<S, H, I, R>(
+    fn run<R, I, H, S>(
         &self,
+        rng: &mut R,
         integrator: &I,
         hamiltonian: &H,
         state: State<S>,
-        rng: &mut R,
     ) -> Result<State<S>>
     where
         S: Spin,
@@ -88,12 +88,12 @@ impl Default for CurieTemp {
 
 impl Program for CurieTemp {
     /// Run the program.
-    fn run<S, H, I, R>(
+    fn run<R, I, H, S>(
         &self,
+        rng: &mut R,
         integrator: &I,
         hamiltonian: &H,
         mut state: State<S>,
-        rng: &mut R,
     ) -> Result<State<S>>
     where
         I: Integrator<S, H>,
@@ -117,10 +117,10 @@ impl Program for CurieTemp {
         loop {
             let mut sensor = Sensor::new(thermostat.temp());
             for _ in 0..self.relax {
-                state = integrator.step(hamiltonian, state, &thermostat, rng);
+                state = integrator.step(rng, &thermostat, hamiltonian, state);
             }
             for _ in 0..self.steps {
-                state = integrator.step(hamiltonian, state, &thermostat, rng);
+                state = integrator.step(rng, &thermostat, hamiltonian, state);
                 sensor.observe(hamiltonian, &state);
             }
             println!("{}", sensor);
@@ -166,12 +166,12 @@ impl Default for Relax {
 
 impl Program for Relax {
     /// Run the program.
-    fn run<S, H, I, R>(
+    fn run<R, I, H, S>(
         &self,
+        rng: &mut R,
         integrator: &I,
         hamiltonian: &H,
         mut state: State<S>,
-        rng: &mut R,
     ) -> Result<State<S>>
     where
         I: Integrator<S, H>,
@@ -188,7 +188,7 @@ impl Program for Relax {
         let thermostat = Thermostat::new(self.temp);
         let mut sensor = Sensor::new(thermostat.temp());
         for _ in 0..self.steps {
-            state = integrator.step(hamiltonian, state, &thermostat, rng);
+            state = integrator.step(rng, &thermostat, hamiltonian, state);
             sensor.observe(hamiltonian, &state);
         }
         Ok(state)

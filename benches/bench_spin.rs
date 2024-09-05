@@ -31,6 +31,6 @@ fn create_1k_heisenberg_spins(b: &mut test::Bencher) {
 fn create_a_1k_spin_state(b: &mut test::Bencher) {
     let mut rng = Pcg64::from_entropy();
     b.iter(|| {
-        let _state = State::<HeisenbergSpin>::rand_with_size(1_000, &mut rng);
+        let _state = State::<HeisenbergSpin>::rand_with_size(&mut rng, 1_000);
     })
 }

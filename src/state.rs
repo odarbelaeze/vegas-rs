@@ -358,7 +358,7 @@ impl<T: Spin> State<T> {
     }
 
     /// Create a new state with a given number of random spins.
-    pub fn rand_with_size<R: Rng>(n: usize, rng: &mut R) -> Self {
+    pub fn rand_with_size<R: Rng>(rng: &mut R, n: usize) -> Self {
         State::<T>((0..n).map(|_| T::rand(rng)).collect())
     }
 

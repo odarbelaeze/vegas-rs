@@ -9,7 +9,7 @@ use vegas::state::{HeisenbergSpin, Spin, State};
 
 #[bench]
 fn gauge_energy_of_a_1_k_heisenberg_state(b: &mut test::Bencher) {
-    let state = State::<HeisenbergSpin>::rand_with_size(1_000, &mut thread_rng());
+    let state = State::<HeisenbergSpin>::rand_with_size(&mut thread_rng(), 1_000);
     let gauge = Gauge::new(1.0);
     b.iter(|| {
         let energy = gauge.total_energy(&state);
