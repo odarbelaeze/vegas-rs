@@ -2,6 +2,7 @@
 
 use crate::{
     energy::HamiltonianComponent,
+    error::{ProgramError, Result},
     integrator::Integrator,
     observables::Sensor,
     state::{Spin, State},
@@ -52,12 +53,29 @@ impl CurieTemp {
         self
     }
 
-    pub fn run<I, H, S>(&self, integrator: &mut I, hamiltonian: &H, mut state: State<S>) -> State<S>
+    pub fn run<I, H, S>(
+        &self,
+        integrator: &mut I,
+        hamiltonian: &H,
+        mut state: State<S>,
+    ) -> Result<State<S>>
     where
         I: Integrator<S, H>,
         H: HamiltonianComponent<S>,
         S: Spin,
     {
+        if self.max_temp < self.min_temp {
+            return Err(ProgramError::MaxTempLessThanMinTemp.into());
+        }
+        if self.steps == 0 {
+            return Err(ProgramError::NoSteps.into());
+        }
+        if self.min_temp < f64::EPSILON {
+            return Err(ProgramError::ZeroTemp.into());
+        }
+        if self.cool_rate < f64::EPSILON {
+            return Err(ProgramError::ZeroDelta.into());
+        }
         let mut termostat = Termostat::new(self.max_temp);
         loop {
             let mut sensor = Sensor::new(termostat.temp());
@@ -74,12 +92,65 @@ impl CurieTemp {
                 break;
             }
         }
-        state
+        Ok(state)
     }
 }
 
 impl Default for CurieTemp {
     fn default() -> Self {
         Self::new(3.0, f64::EPSILON, 0.1, 1000, 20000)
+    }
+}
+
+pub struct Relax {
+    steps: usize,
+    temp: f64,
+}
+
+impl Relax {
+    pub fn new(steps: usize, temp: f64) -> Self {
+        Self { steps, temp }
+    }
+
+    pub fn with_steps(mut self, steps: usize) -> Self {
+        self.steps = steps;
+        self
+    }
+
+    pub fn with_temp(mut self, temp: f64) -> Self {
+        self.temp = temp;
+        self
+    }
+
+    pub fn run<I, H, S>(
+        &self,
+        integrator: &mut I,
+        hamiltonian: &H,
+        mut state: State<S>,
+    ) -> Result<State<S>>
+    where
+        I: Integrator<S, H>,
+        H: HamiltonianComponent<S>,
+        S: Spin,
+    {
+        if self.steps == 0 {
+            return Err(ProgramError::NoSteps.into());
+        }
+        if self.temp < f64::EPSILON {
+            return Err(ProgramError::ZeroTemp.into());
+        }
+        let termostat = Termostat::new(self.temp);
+        let mut sensor = Sensor::new(termostat.temp());
+        for _ in 0..self.steps {
+            state = integrator.step(hamiltonian, state, &termostat);
+            sensor.observe(hamiltonian, &state);
+        }
+        Ok(state)
+    }
+}
+
+impl Default for Relax {
+    fn default() -> Self {
+        Self::new(1000, 3.0)
     }
 }

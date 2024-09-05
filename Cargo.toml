@@ -12,7 +12,8 @@ edition = "2021"
 
 [dependencies]
 rand = { version = "0.8.5" }
-vegas-lattice = "0.6"
+vegas-lattice = "0.7"
 sprs = "0.11.1"
 clap = { version = "4.4.6", features = ["cargo", "derive"] }
 rand_pcg = "0.3.1"
+thiserror = "1.0.63"
