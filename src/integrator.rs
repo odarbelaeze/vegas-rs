@@ -1,7 +1,7 @@
 //! Integrators for Monte Carlo simulations.
 
 use rand::distributions::{Distribution, Uniform};
-use rand::{Rng, SeedableRng};
+use rand::Rng;
 
 use crate::energy::HamiltonianComponent;
 use crate::state::{Spin, State};
@@ -11,7 +11,13 @@ use crate::termostat::Termostat;
 /// system.
 pub trait Integrator<S: Spin, T: HamiltonianComponent<S>> {
     /// Perform a single step of the integrator.
-    fn step(&mut self, energy: &T, state: State<S>, termostat: &Termostat) -> State<S>;
+    fn step<R: Rng>(
+        &self,
+        energy: &T,
+        state: State<S>,
+        termostat: &Termostat,
+        rng: &mut R,
+    ) -> State<S>;
 }
 
 /// The most common integrator is the Metropolis integrator.
@@ -19,53 +25,40 @@ pub trait Integrator<S: Spin, T: HamiltonianComponent<S>> {
 /// The Metropolis integrator is a Monte Carlo method that allows you to sample
 /// the phase space of a system. It is based on the Metropolis algorithm, which
 /// is a Markov chain Monte Carlo method.
-pub struct MetropolisIntegrator<R>
-where
-    R: Rng,
-{
-    rng: R,
-}
+#[derive(Debug, Default)]
+pub struct MetropolisIntegrator {}
 
-impl<R> MetropolisIntegrator<R>
-where
-    R: Rng + SeedableRng,
-{
+impl MetropolisIntegrator {
     /// Create a new Metropolis integrator with a given temperature.
-    pub fn new(rng: R) -> Self {
-        Self { rng }
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
-impl<R> Default for MetropolisIntegrator<R>
-where
-    R: Rng + SeedableRng,
-{
-    fn default() -> Self {
-        Self {
-            rng: R::from_entropy(),
-        }
-    }
-}
-
-impl<S, H, R> Integrator<S, H> for MetropolisIntegrator<R>
+impl<S, H> Integrator<S, H> for MetropolisIntegrator
 where
     S: Spin + Clone,
     H: HamiltonianComponent<S>,
-    R: Rng,
 {
-    fn step(&mut self, hamiltonian: &H, mut state: State<S>, termostat: &Termostat) -> State<S> {
+    fn step<R: Rng>(
+        &self,
+        hamiltonian: &H,
+        mut state: State<S>,
+        termostat: &Termostat,
+        rng: &mut R,
+    ) -> State<S> {
         let sites = Uniform::new(0, state.len());
         for _ in 0..state.len() {
-            let site = sites.sample(&mut self.rng);
+            let site = sites.sample(rng);
             let old_energy = hamiltonian.energy(&state, site);
             let old_spin = state.at(site).clone();
-            state.set_at(site, Spin::rand(&mut self.rng));
+            state.set_at(site, Spin::rand(rng));
             let new_energy = hamiltonian.energy(&state, site);
             let delta = new_energy - old_energy;
             if delta < 0.0 {
                 continue;
             }
-            if self.rng.gen::<f64>() < (-delta / termostat.temp()).exp() {
+            if rng.gen::<f64>() < (-delta / termostat.temp()).exp() {
                 continue;
             }
             state.set_at(site, old_spin);

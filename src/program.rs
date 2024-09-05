@@ -1,5 +1,7 @@
 //! Programs to run on samples.
 
+use rand::Rng;
+
 use crate::{
     energy::HamiltonianComponent,
     error::{ProgramError, Result},
@@ -53,16 +55,18 @@ impl CurieTemp {
         self
     }
 
-    pub fn run<I, H, S>(
+    pub fn run<I, H, S, R>(
         &self,
-        integrator: &mut I,
+        integrator: &I,
         hamiltonian: &H,
         mut state: State<S>,
+        rng: &mut R,
     ) -> Result<State<S>>
     where
         I: Integrator<S, H>,
         H: HamiltonianComponent<S>,
         S: Spin,
+        R: Rng,
     {
         if self.max_temp < self.min_temp {
             return Err(ProgramError::MaxTempLessThanMinTemp.into());
@@ -80,10 +84,10 @@ impl CurieTemp {
         loop {
             let mut sensor = Sensor::new(termostat.temp());
             for _ in 0..self.relax {
-                state = integrator.step(hamiltonian, state, &termostat);
+                state = integrator.step(hamiltonian, state, &termostat, rng);
             }
             for _ in 0..self.steps {
-                state = integrator.step(hamiltonian, state, &termostat);
+                state = integrator.step(hamiltonian, state, &termostat, rng);
                 sensor.observe(hamiltonian, &state);
             }
             println!("{}", sensor);
@@ -122,16 +126,18 @@ impl Relax {
         self
     }
 
-    pub fn run<I, H, S>(
+    pub fn run<I, H, S, R>(
         &self,
-        integrator: &mut I,
+        integrator: &I,
         hamiltonian: &H,
         mut state: State<S>,
+        rng: &mut R,
     ) -> Result<State<S>>
     where
         I: Integrator<S, H>,
         H: HamiltonianComponent<S>,
         S: Spin,
+        R: Rng,
     {
         if self.steps == 0 {
             return Err(ProgramError::NoSteps.into());
@@ -142,7 +148,7 @@ impl Relax {
         let termostat = Termostat::new(self.temp);
         let mut sensor = Sensor::new(termostat.temp());
         for _ in 0..self.steps {
-            state = integrator.step(hamiltonian, state, &termostat);
+            state = integrator.step(hamiltonian, state, &termostat, rng);
             sensor.observe(hamiltonian, &state);
         }
         Ok(state)
