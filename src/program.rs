@@ -195,8 +195,8 @@ impl Program for Relax {
     }
 }
 
-/// A program that runs a histeresis loop.
-pub struct HisteresisLoop {
+/// A program that runs a hysteresis loop.
+pub struct HysteresisLoop {
     steps: usize,
     relax: usize,
     temp: f64,
@@ -204,8 +204,8 @@ pub struct HisteresisLoop {
     field_step: f64,
 }
 
-impl HisteresisLoop {
-    /// Create a new histeresis loop program.
+impl HysteresisLoop {
+    /// Create a new hysteresis loop program.
     pub fn new(steps: usize, relax: usize, temp: f64, max_field: f64, field_step: f64) -> Self {
         Self {
             steps,
@@ -247,13 +247,13 @@ impl HisteresisLoop {
     }
 }
 
-impl Default for HisteresisLoop {
+impl Default for HysteresisLoop {
     fn default() -> Self {
         Self::new(1000, 1000, 3.0, 1.0, 0.1)
     }
 }
 
-impl Program for HisteresisLoop {
+impl Program for HysteresisLoop {
     /// Run the program.
     fn run<R, I, H, S>(
         &self,
