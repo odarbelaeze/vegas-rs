@@ -26,29 +26,34 @@ pub trait Spin: Clone + Add<Self, Output = Self::MagnetizationType> {
     /// Interact with another spin
     fn interact(&self, other: &Self) -> f64;
 
+    /// Dot product of two spins.
     fn dot(&self, other: &Self) -> f64;
 }
 
+/// This trait represents a spin which can be flipped.
+pub trait Flip {
+    /// Flip the spin.
+    fn flip(&self) -> Self;
+}
+
+/// This trait represents a magnetization.
 pub trait Magnetization: Default + Clone + Add<Self, Output = Self> + Sum<Self::SpinType> {
     type SpinType: Spin;
 
+    /// Create a new magnetization.
     fn new() -> Self
     where
         Self: Sized,
     {
         Default::default()
     }
+    /// Get the magnitude of the magnetization.
     fn magnitude(&self) -> f64;
+    /// Get the orientation of the magnetization.
     fn orientation(&self) -> Self::SpinType;
 }
 
-/// This trait represents a spin which can be created as a perturbation of
-/// another, useful for things like a Metropolis algorithm.
-pub trait PerturbableSpin: Spin {
-    /// New up a spin which is the perturbation of other.
-    fn perturbation_of<R: Rng>(other: &Self, rng: &mut R) -> Self;
-}
-
+/// This enum represents an Ising spin.
 #[derive(Debug, Clone, PartialEq)]
 pub enum IsingSpin {
     Up,
@@ -91,16 +96,17 @@ impl Spin for IsingSpin {
     }
 }
 
-impl PerturbableSpin for IsingSpin {
-    fn perturbation_of<T>(other: &Self, _: &mut T) -> Self {
+impl Flip for IsingSpin {
+    fn flip(&self) -> Self {
         use self::IsingSpin::{Down, Up};
-        match *other {
+        match self {
             Up => Down,
             Down => Up,
         }
     }
 }
 
+/// Ising magnetization.
 #[derive(Debug, Clone)]
 pub struct IsingMagnetization {
     magnitude: usize,
@@ -108,6 +114,7 @@ pub struct IsingMagnetization {
 }
 
 impl IsingMagnetization {
+    /// Create a new Ising magnetization.
     pub fn new() -> Self {
         IsingMagnetization {
             magnitude: 0,
@@ -213,6 +220,7 @@ impl Add<IsingSpin> for IsingMagnetization {
     }
 }
 
+/// Heisenberg spin.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HeisenbergSpin([f64; 3]);
 
@@ -260,12 +268,14 @@ impl Spin for HeisenbergSpin {
     }
 }
 
-impl PerturbableSpin for HeisenbergSpin {
-    fn perturbation_of<R: Rng>(_: &Self, rng: &mut R) -> Self {
-        Self::rand(rng)
+impl Flip for HeisenbergSpin {
+    fn flip(&self) -> Self {
+        let HeisenbergSpin(a) = self;
+        HeisenbergSpin([-a[0], -a[1], -a[2]])
     }
 }
 
+/// Heisenberg magnetization.
 #[derive(Debug, Clone)]
 pub struct HeisenbergMagnetization([f64; 3]);
 
@@ -332,43 +342,53 @@ impl Add<HeisenbergSpin> for HeisenbergMagnetization {
     }
 }
 
+/// A state of spins.
 #[derive(Clone)]
 pub struct State<T: Spin>(Vec<T>);
 
 impl<T: Spin> State<T> {
+    /// Create a new state with a given number of spins pointing down.
     pub fn down_with_size(n: usize) -> Self {
         State::<T>((0..n).map(|_| T::down()).collect())
     }
 
+    /// Create a new state with a given number of spins pointing up.
     pub fn up_with_size(n: usize) -> Self {
         State::<T>((0..n).map(|_| T::up()).collect())
     }
 
-    pub fn rand_with_size<R: Rng>(n: usize, rng: &mut R) -> Self {
+    /// Create a new state with a given number of random spins.
+    pub fn rand_with_size<R: Rng>(rng: &mut R, n: usize) -> Self {
         State::<T>((0..n).map(|_| T::rand(rng)).collect())
     }
 
+    /// View the spins in a state.
     pub fn spins(&self) -> &Vec<T> {
         let State::<T>(items) = self;
         items
     }
 
+    /// View a particular spin in a state.
     pub fn at(&self, index: usize) -> &T {
         &self.spins()[index]
     }
 
+    /// Set a particular spin in a state.
     pub fn set_at(&mut self, index: usize, spin: T) {
         self.0[index] = spin;
     }
 
+    /// Get the length of a state.
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    /// Check if a state is empty.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
+    /// Get the magnetization of a state.
     pub fn magnetization(&self) -> T::MagnetizationType
     where
         T: Spin + Add<T, Output = T::MagnetizationType> + Clone,
@@ -384,8 +404,8 @@ mod tests {
     use super::HeisenbergSpin;
     use super::IsingMagnetization;
     use super::IsingSpin;
+    use super::Spin;
     use super::State;
-    use super::{PerturbableSpin, Spin};
     use rand::thread_rng;
     use rand::SeedableRng;
     use rand_pcg::Pcg64;
@@ -440,15 +460,6 @@ mod tests {
             let norm = a.iter().map(|i| i * i).fold(0f64, |s, i| s + i);
             assert_real_close(norm, 1.0);
         }
-    }
-
-    #[test]
-    fn perturbation_of_heisenberg_spins() {
-        let a = HeisenbergSpin::rand(&mut thread_rng());
-        let b = HeisenbergSpin::perturbation_of(&a, &mut thread_rng());
-        let HeisenbergSpin(aitems) = a;
-        let HeisenbergSpin(bitems) = b;
-        assert!(aitems != bitems);
     }
 
     #[test]
