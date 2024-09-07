@@ -4,19 +4,18 @@ use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
 
 use crate::{
-    energy::HamiltonianComponent,
+    hamiltonian::HamiltonianComponent,
     state::{Flip, Spin, State},
-    thermostat::Thermostat,
 };
 
 /// An integrator is a method that allows you to sample the phase space of a
 /// system.
-pub trait Integrator<S: Spin, H: HamiltonianComponent<S>> {
+pub trait Integrator<S: Spin> {
     /// Perform a single step of the integrator.
-    fn step<R: Rng>(
+    fn step<R: Rng, H: HamiltonianComponent<S>>(
         &self,
         rng: &mut R,
-        thermostat: &Thermostat,
+        temp: f64,
         hamiltonian: &H,
         state: State<S>,
     ) -> State<S>;
@@ -37,16 +36,12 @@ impl MetropolisIntegrator {
     }
 }
 
-impl<S, H> Integrator<S, H> for MetropolisIntegrator
-where
-    S: Spin,
-    H: HamiltonianComponent<S>,
-{
+impl<S: Spin> Integrator<S> for MetropolisIntegrator {
     /// Perform a single step of the Metropolis integrator.
-    fn step<R: Rng>(
+    fn step<R: Rng, H: HamiltonianComponent<S>>(
         &self,
         rng: &mut R,
-        thermostat: &Thermostat,
+        temp: f64,
         hamiltonian: &H,
         mut state: State<S>,
     ) -> State<S> {
@@ -61,7 +56,7 @@ where
             if delta < 0.0 {
                 continue;
             }
-            if rng.gen::<f64>() < (-delta / thermostat.temp()).exp() {
+            if rng.gen::<f64>() < (-delta / temp).exp() {
                 continue;
             }
             state.set_at(site, old_spin);
@@ -85,16 +80,15 @@ impl MetropolisFlipIntegrator {
     }
 }
 
-impl<S, H> Integrator<S, H> for MetropolisFlipIntegrator
+impl<S> Integrator<S> for MetropolisFlipIntegrator
 where
     S: Spin + Flip,
-    H: HamiltonianComponent<S>,
 {
     /// Perform a single step of the Metropolis integrator.
-    fn step<R: Rng>(
+    fn step<R: Rng, H: HamiltonianComponent<S>>(
         &self,
         rng: &mut R,
-        thermostat: &Thermostat,
+        temp: f64,
         hamiltonian: &H,
         mut state: State<S>,
     ) -> State<S> {
@@ -109,7 +103,7 @@ where
             if delta < 0.0 {
                 continue;
             }
-            if rng.gen::<f64>() < (-delta / thermostat.temp()).exp() {
+            if rng.gen::<f64>() < (-delta / temp).exp() {
                 continue;
             }
             state.set_at(site, old_spin);

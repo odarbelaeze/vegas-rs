@@ -4,7 +4,7 @@ extern crate test;
 extern crate vegas;
 
 use rand::thread_rng;
-use vegas::energy::{Compound, Gauge, HamiltonianComponent, UniaxialAnisotropy};
+use vegas::hamiltonian::{Compound, Gauge, HamiltonianComponent, UniaxialAnisotropy};
 use vegas::state::{HeisenbergSpin, Spin, State};
 
 #[bench]

@@ -3,7 +3,7 @@ extern crate rand;
 extern crate test;
 extern crate vegas;
 
-use rand::SeedableRng;
+use rand::{rngs::SmallRng, SeedableRng};
 use rand_pcg::Pcg64;
 use vegas::state::{HeisenbergSpin, IsingSpin, Spin, State};
 
@@ -20,6 +20,16 @@ fn create_1k_ising_spins(b: &mut test::Bencher) {
 #[bench]
 fn create_1k_heisenberg_spins(b: &mut test::Bencher) {
     let mut rng = Pcg64::from_entropy();
+    b.iter(|| {
+        for _ in 0..1_000 {
+            let _spin = HeisenbergSpin::rand(&mut rng);
+        }
+    });
+}
+
+#[bench]
+fn create_1k_heisenberg_spins_with_small_rng(b: &mut test::Bencher) {
+    let mut rng = SmallRng::from_entropy();
     b.iter(|| {
         for _ in 0..1_000 {
             let _spin = HeisenbergSpin::rand(&mut rng);

@@ -14,9 +14,10 @@ use rand_pcg::Pcg64;
 use vegas_lattice::{Axis, Lattice};
 
 use vegas::{
-    energy::Exchage,
     error::Result,
+    hamiltonian::Exchage,
     integrator::{MetropolisFlipIntegrator, MetropolisIntegrator},
+    machine::Machine,
     program::{CurieTemp, Program, Relax},
     state::{HeisenbergSpin, IsingSpin, State},
 };
@@ -29,18 +30,16 @@ fn bench(lattice: Lattice, model: Model) -> Result<()> {
             let mut rng = Pcg64::from_entropy();
             let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
-            program
-                .run(&mut rng, &integrator, &hamiltonian, state)
-                .map(|_| ())
+            let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
+            program.run(&mut rng, &mut machine)
         }
         Model::Heisenberg => {
             let program = CurieTemp::default().set_max_temp(2.5);
             let mut rng = Pcg64::from_entropy();
             let state = State::<HeisenbergSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
-            program
-                .run(&mut rng, &integrator, &hamiltonian, state)
-                .map(|_| ())
+            let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
+            program.run(&mut rng, &mut machine)
         }
     }
 }
@@ -61,9 +60,9 @@ fn bench_ising(length: usize) -> Result<()> {
     let mut rng = Pcg64::from_entropy();
     let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
     let integrator = MetropolisFlipIntegrator::new();
-    let state = relax.run(&mut rng, &integrator, &hamiltonian, state)?;
-    let _state = curie.run(&mut rng, &integrator, &hamiltonian, state)?;
-    Ok(())
+    let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
+    relax.run(&mut rng, &mut machine)?;
+    curie.run(&mut rng, &mut machine)
 }
 
 fn bench_model(model: Model, length: usize) -> Result<()> {

@@ -49,10 +49,11 @@ extern crate rand;
 extern crate sprs;
 extern crate vegas_lattice;
 
-pub mod energy;
 pub mod error;
+#[macro_use]
+pub mod hamiltonian;
 pub mod integrator;
+pub mod machine;
 pub mod observables;
 pub mod program;
 pub mod state;
-pub mod thermostat;
