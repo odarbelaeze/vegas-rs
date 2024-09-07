@@ -4,7 +4,7 @@ use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
 
 use crate::{
-    energy::HamiltonianComponent,
+    hamiltonian::HamiltonianComponent,
     state::{Flip, Spin, State},
     thermostat::Thermostat,
 };

@@ -4,7 +4,7 @@ use core::fmt;
 use std::fmt::{Display, Formatter};
 
 use crate::{
-    energy::HamiltonianComponent,
+    hamiltonian::HamiltonianComponent,
     state::{Magnetization, Spin, State},
 };
 

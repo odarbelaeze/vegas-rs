@@ -14,8 +14,8 @@ use rand_pcg::Pcg64;
 use vegas_lattice::{Axis, Lattice};
 
 use vegas::{
-    energy::Exchage,
     error::Result,
+    hamiltonian::Exchage,
     integrator::{MetropolisFlipIntegrator, MetropolisIntegrator},
     program::{CurieTemp, Program, Relax},
     state::{HeisenbergSpin, IsingSpin, State},

@@ -226,7 +226,7 @@ where
 /// ```
 /// #[macro_use] extern crate vegas;
 /// use vegas::state::{Spin, HeisenbergSpin};
-/// use vegas::energy::{Gauge, UniaxialAnisotropy};
+/// use vegas::hamiltonian::{Gauge, UniaxialAnisotropy};
 /// fn main() {
 ///     let _hamiltonian =  hamiltonian!(
 ///         UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0),
@@ -246,7 +246,7 @@ macro_rules! hamiltonian {
         $I
         );
     ($I: expr, $J: expr) => (
-        $crate::energy::Compound::new($I, $J)
+        $crate::hamiltonian::Compound::new($I, $J)
         );
     ($I: expr, $J: expr, $($K: expr),+) => (
         hamiltonian!(@flatten hamiltonian!($I, $J), $($K,)+)

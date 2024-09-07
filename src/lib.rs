@@ -49,8 +49,8 @@ extern crate rand;
 extern crate sprs;
 extern crate vegas_lattice;
 
-pub mod energy;
 pub mod error;
+pub mod hamiltonian;
 pub mod integrator;
 pub mod observables;
 pub mod program;

@@ -3,8 +3,8 @@
 use rand::Rng;
 
 use crate::{
-    energy::HamiltonianComponent,
     error::{ProgramError, Result},
+    hamiltonian::HamiltonianComponent,
     integrator::Integrator,
     observables::Sensor,
     state::{Spin, State},
