@@ -11,9 +11,9 @@ use crate::{
 
 /// An integrator is a method that allows you to sample the phase space of a
 /// system.
-pub trait Integrator<S: Spin, H: HamiltonianComponent<S>> {
+pub trait Integrator<S: Spin> {
     /// Perform a single step of the integrator.
-    fn step<R: Rng>(
+    fn step<R: Rng, H: HamiltonianComponent<S>>(
         &self,
         rng: &mut R,
         thermostat: &Thermostat,
@@ -37,13 +37,9 @@ impl MetropolisIntegrator {
     }
 }
 
-impl<S, H> Integrator<S, H> for MetropolisIntegrator
-where
-    S: Spin,
-    H: HamiltonianComponent<S>,
-{
+impl<S: Spin> Integrator<S> for MetropolisIntegrator {
     /// Perform a single step of the Metropolis integrator.
-    fn step<R: Rng>(
+    fn step<R: Rng, H: HamiltonianComponent<S>>(
         &self,
         rng: &mut R,
         thermostat: &Thermostat,
@@ -85,13 +81,12 @@ impl MetropolisFlipIntegrator {
     }
 }
 
-impl<S, H> Integrator<S, H> for MetropolisFlipIntegrator
+impl<S> Integrator<S> for MetropolisFlipIntegrator
 where
     S: Spin + Flip,
-    H: HamiltonianComponent<S>,
 {
     /// Perform a single step of the Metropolis integrator.
-    fn step<R: Rng>(
+    fn step<R: Rng, H: HamiltonianComponent<S>>(
         &self,
         rng: &mut R,
         thermostat: &Thermostat,

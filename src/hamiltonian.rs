@@ -12,7 +12,7 @@ use vegas_lattice::Lattice;
 ///
 /// An energy component is characterized by the fact that it can
 /// compute the energy of a given site for a given state.
-pub trait HamiltonianComponent<S: Spin> {
+pub trait HamiltonianComponent<S: Spin>: Clone {
     /// Get the energy of a given site for a state.
     ///
     /// Panics:
@@ -30,6 +30,7 @@ pub trait HamiltonianComponent<S: Spin> {
 }
 
 /// Some constant energy that doesn't depend on the state.
+#[derive(Clone)]
 pub struct Gauge {
     value: f64,
 }
@@ -49,6 +50,7 @@ impl<T: Spin> HamiltonianComponent<T> for Gauge {
 }
 
 /// Strong preference for a given axis.
+#[derive(Clone)]
 pub struct UniaxialAnisotropy<S>
 where
     S: Spin,
@@ -89,6 +91,7 @@ where
 }
 
 /// Energy resulting from a magnetic field.
+#[derive(Clone)]
 pub struct ZeemanEnergy<S>
 where
     S: Spin,
@@ -129,6 +132,7 @@ where
 }
 
 /// Energy resulting from the exchange interaction.
+#[derive(Clone)]
 pub struct Exchage {
     exchange: CsMat<f64>,
 }
@@ -182,6 +186,7 @@ where
 ///
 /// The key point here is that you one of the energy components
 /// can be a compound energy itself.
+#[derive(Clone)]
 pub struct Compound<S, U, V>
 where
     S: Spin,

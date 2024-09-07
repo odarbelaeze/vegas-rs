@@ -6,25 +6,18 @@ use crate::{
     error::{ProgramError, Result},
     hamiltonian::HamiltonianComponent,
     integrator::Integrator,
-    observables::Sensor,
-    state::{Spin, State},
-    thermostat::Thermostat,
+    machine::Machine,
+    state::Spin,
 };
 
 /// A program is a sequence of steps that can be run on a system.
 pub trait Program {
     /// Run the program on a system returning the last state.
-    fn run<R, I, H, S>(
-        &self,
-        rng: &mut R,
-        integrator: &I,
-        hamiltonian: &H,
-        state: State<S>,
-    ) -> Result<State<S>>
+    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
     where
         S: Spin,
         H: HamiltonianComponent<S>,
-        I: Integrator<S, H>,
+        I: Integrator<S>,
         R: Rng;
 }
 
@@ -88,15 +81,9 @@ impl Default for CurieTemp {
 
 impl Program for CurieTemp {
     /// Run the program.
-    fn run<R, I, H, S>(
-        &self,
-        rng: &mut R,
-        integrator: &I,
-        hamiltonian: &H,
-        mut state: State<S>,
-    ) -> Result<State<S>>
+    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
     where
-        I: Integrator<S, H>,
+        I: Integrator<S>,
         H: HamiltonianComponent<S>,
         S: Spin,
         R: Rng,
@@ -113,23 +100,18 @@ impl Program for CurieTemp {
         if self.cool_rate < f64::EPSILON {
             return Err(ProgramError::ZeroCoolRate.into());
         }
-        let mut thermostat = Thermostat::new(self.max_temp);
+        let mut temp = self.max_temp;
         loop {
-            let mut sensor = Sensor::new(thermostat.temp());
-            for _ in 0..self.relax {
-                state = integrator.step(rng, &thermostat, hamiltonian, state);
-            }
-            for _ in 0..self.steps {
-                state = integrator.step(rng, &thermostat, hamiltonian, state);
-                sensor.observe(hamiltonian, &state);
-            }
+            machine.set_temp(temp);
+            let _sensor = machine.run(rng, self.relax);
+            let sensor = machine.run(rng, self.steps);
             println!("{}", sensor);
-            thermostat.cool(self.cool_rate);
-            if thermostat.temp() < self.min_temp {
+            temp -= self.cool_rate;
+            if temp < self.min_temp {
                 break;
             }
         }
-        Ok(state)
+        Ok(())
     }
 }
 
@@ -166,15 +148,9 @@ impl Default for Relax {
 
 impl Program for Relax {
     /// Run the program.
-    fn run<R, I, H, S>(
-        &self,
-        rng: &mut R,
-        integrator: &I,
-        hamiltonian: &H,
-        mut state: State<S>,
-    ) -> Result<State<S>>
+    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
     where
-        I: Integrator<S, H>,
+        I: Integrator<S>,
         H: HamiltonianComponent<S>,
         S: Spin,
         R: Rng,
@@ -185,13 +161,9 @@ impl Program for Relax {
         if self.temp < f64::EPSILON {
             return Err(ProgramError::ZeroTemp.into());
         }
-        let thermostat = Thermostat::new(self.temp);
-        let mut sensor = Sensor::new(thermostat.temp());
-        for _ in 0..self.steps {
-            state = integrator.step(rng, &thermostat, hamiltonian, state);
-            sensor.observe(hamiltonian, &state);
-        }
-        Ok(state)
+        machine.set_temp(self.temp);
+        let _sensor = machine.run(rng, self.steps);
+        Ok(())
     }
 }
 
@@ -255,16 +227,10 @@ impl Default for HysteresisLoop {
 
 impl Program for HysteresisLoop {
     /// Run the program.
-    fn run<R, I, H, S>(
-        &self,
-        rng: &mut R,
-        integrator: &I,
-        hamiltonian: &H,
-        mut state: State<S>,
-    ) -> Result<State<S>>
+    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
     where
         R: Rng,
-        I: Integrator<S, H>,
+        I: Integrator<S>,
         H: HamiltonianComponent<S>,
         S: Spin,
     {
@@ -280,17 +246,12 @@ impl Program for HysteresisLoop {
         if self.field_step < f64::EPSILON {
             return Err(ProgramError::ZeroFieldStep.into());
         }
-        let thermostat = Thermostat::new(self.temp);
+        machine.set_temp(self.temp);
         let mut field = 0.0;
         loop {
-            let mut sensor = Sensor::new(thermostat.temp());
-            for _ in 0..self.relax {
-                state = integrator.step(rng, &thermostat, hamiltonian, state);
-            }
-            for _ in 0..self.steps {
-                state = integrator.step(rng, &thermostat, hamiltonian, state);
-                sensor.observe(hamiltonian, &state);
-            }
+            machine.set_field(field);
+            let _sensor = machine.run(rng, self.relax);
+            let sensor = machine.run(rng, self.steps);
             println!("{}", sensor);
             field += self.field_step;
             if field > self.max_field {
@@ -298,14 +259,9 @@ impl Program for HysteresisLoop {
             }
         }
         loop {
-            let mut sensor = Sensor::new(thermostat.temp());
-            for _ in 0..self.relax {
-                state = integrator.step(rng, &thermostat, hamiltonian, state);
-            }
-            for _ in 0..self.steps {
-                state = integrator.step(rng, &thermostat, hamiltonian, state);
-                sensor.observe(hamiltonian, &state);
-            }
+            machine.set_field(field);
+            let _sensor = machine.run(rng, self.relax);
+            let sensor = machine.run(rng, self.steps);
             println!("{}", sensor);
             field -= self.field_step;
             if field < -self.max_field {
@@ -313,14 +269,9 @@ impl Program for HysteresisLoop {
             }
         }
         loop {
-            let mut sensor = Sensor::new(thermostat.temp());
-            for _ in 0..self.relax {
-                state = integrator.step(rng, &thermostat, hamiltonian, state);
-            }
-            for _ in 0..self.steps {
-                state = integrator.step(rng, &thermostat, hamiltonian, state);
-                sensor.observe(hamiltonian, &state);
-            }
+            machine.set_field(field);
+            let _sensor = machine.run(rng, self.relax);
+            let sensor = machine.run(rng, self.steps);
             println!("{}", sensor);
             field += self.field_step;
             if field < self.max_field {
@@ -328,6 +279,6 @@ impl Program for HysteresisLoop {
             }
         }
 
-        Ok(state)
+        Ok(())
     }
 }
