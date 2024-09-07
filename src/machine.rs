@@ -60,7 +60,7 @@ where
                 self.state = self
                     .integrator
                     .step(rng, self.temp, &hamiltonian, self.state.clone());
-                sensor.observe(&self.hamiltonian, &self.state);
+                sensor.observe(&hamiltonian, &self.state);
             }
             return sensor;
         }
