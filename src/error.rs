@@ -25,8 +25,12 @@ pub enum ProgramError {
     NoSteps,
     #[error("temperature must be greater than zero")]
     ZeroTemp,
-    #[error("temperature delta must be greater than zero")]
-    ZeroDelta,
+    #[error("cooling rate must be greater than zero")]
+    ZeroCoolRate,
+    #[error("maximum field must be greater than zero")]
+    ZeroField,
+    #[error("field step must be greater than zero")]
+    ZeroFieldStep,
 }
 
 /// Result type for the vegas package
