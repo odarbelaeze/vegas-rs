@@ -21,6 +21,57 @@ pub trait Program {
         R: Rng;
 }
 
+/// A program that relaxes the system.
+pub struct Relax {
+    steps: usize,
+    temp: f64,
+}
+
+impl Relax {
+    /// Create a new relaxation program.
+    pub fn new(steps: usize, temp: f64) -> Self {
+        Self { steps, temp }
+    }
+
+    /// Set the number of steps.
+    pub fn set_steps(mut self, steps: usize) -> Self {
+        self.steps = steps;
+        self
+    }
+
+    /// Set the temperature.
+    pub fn set_temp(mut self, temp: f64) -> Self {
+        self.temp = temp;
+        self
+    }
+}
+
+impl Default for Relax {
+    fn default() -> Self {
+        Self::new(1000, 3.0)
+    }
+}
+
+impl Program for Relax {
+    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
+    where
+        I: Integrator<S>,
+        H: HamiltonianComponent<S>,
+        S: Spin,
+        R: Rng,
+    {
+        if self.steps == 0 {
+            return Err(ProgramError::NoSteps.into());
+        }
+        if self.temp < f64::EPSILON {
+            return Err(ProgramError::ZeroTemp.into());
+        }
+        machine.set_temp(self.temp);
+        let _sensor = machine.run(rng, self.steps);
+        Ok(())
+    }
+}
+
 /// A program that cools the system to find the Curie temperature.
 pub struct CurieTemp {
     max_temp: f64,
@@ -80,7 +131,6 @@ impl Default for CurieTemp {
 }
 
 impl Program for CurieTemp {
-    /// Run the program.
     fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
     where
         I: Integrator<S>,
@@ -111,58 +161,6 @@ impl Program for CurieTemp {
                 break;
             }
         }
-        Ok(())
-    }
-}
-
-/// A program that relaxes the system.
-pub struct Relax {
-    steps: usize,
-    temp: f64,
-}
-
-impl Relax {
-    /// Create a new relaxation program.
-    pub fn new(steps: usize, temp: f64) -> Self {
-        Self { steps, temp }
-    }
-
-    /// Set the number of steps.
-    pub fn set_steps(mut self, steps: usize) -> Self {
-        self.steps = steps;
-        self
-    }
-
-    /// Set the temperature.
-    pub fn set_temp(mut self, temp: f64) -> Self {
-        self.temp = temp;
-        self
-    }
-}
-
-impl Default for Relax {
-    fn default() -> Self {
-        Self::new(1000, 3.0)
-    }
-}
-
-impl Program for Relax {
-    /// Run the program.
-    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
-    where
-        I: Integrator<S>,
-        H: HamiltonianComponent<S>,
-        S: Spin,
-        R: Rng,
-    {
-        if self.steps == 0 {
-            return Err(ProgramError::NoSteps.into());
-        }
-        if self.temp < f64::EPSILON {
-            return Err(ProgramError::ZeroTemp.into());
-        }
-        machine.set_temp(self.temp);
-        let _sensor = machine.run(rng, self.steps);
         Ok(())
     }
 }
@@ -226,7 +224,6 @@ impl Default for HysteresisLoop {
 }
 
 impl Program for HysteresisLoop {
-    /// Run the program.
     fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
     where
         R: Rng,

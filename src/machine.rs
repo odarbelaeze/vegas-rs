@@ -7,7 +7,6 @@ use crate::{
     integrator::Integrator,
     observables::Sensor,
     state::{Spin, State},
-    thermostat::Thermostat,
 };
 
 pub struct Machine<H, I, S>
@@ -51,7 +50,6 @@ where
     }
 
     pub fn run<R: Rng>(&mut self, rng: &mut R, steps: usize) -> Sensor {
-        let thermostat = Thermostat::new(self.temp);
         let mut sensor = Sensor::new(self.temp);
         if self.field != 0.0 {
             let hamiltonian = hamiltonian!(
@@ -59,9 +57,9 @@ where
                 ZeemanEnergy::new(S::up(), self.field)
             );
             for _ in 0..steps {
-                self.state =
-                    self.integrator
-                        .step(rng, &thermostat, &hamiltonian, self.state.clone());
+                self.state = self
+                    .integrator
+                    .step(rng, self.temp, &hamiltonian, self.state.clone());
                 sensor.observe(&self.hamiltonian, &self.state);
             }
             return sensor;
@@ -69,7 +67,7 @@ where
         for _ in 0..steps {
             self.state =
                 self.integrator
-                    .step(rng, &thermostat, &self.hamiltonian, self.state.clone());
+                    .step(rng, self.temp, &self.hamiltonian, self.state.clone());
             sensor.observe(&self.hamiltonian, &self.state);
         }
         sensor

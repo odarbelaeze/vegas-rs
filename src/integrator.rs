@@ -6,7 +6,6 @@ use rand::Rng;
 use crate::{
     hamiltonian::HamiltonianComponent,
     state::{Flip, Spin, State},
-    thermostat::Thermostat,
 };
 
 /// An integrator is a method that allows you to sample the phase space of a
@@ -16,7 +15,7 @@ pub trait Integrator<S: Spin> {
     fn step<R: Rng, H: HamiltonianComponent<S>>(
         &self,
         rng: &mut R,
-        thermostat: &Thermostat,
+        temp: f64,
         hamiltonian: &H,
         state: State<S>,
     ) -> State<S>;
@@ -42,7 +41,7 @@ impl<S: Spin> Integrator<S> for MetropolisIntegrator {
     fn step<R: Rng, H: HamiltonianComponent<S>>(
         &self,
         rng: &mut R,
-        thermostat: &Thermostat,
+        temp: f64,
         hamiltonian: &H,
         mut state: State<S>,
     ) -> State<S> {
@@ -57,7 +56,7 @@ impl<S: Spin> Integrator<S> for MetropolisIntegrator {
             if delta < 0.0 {
                 continue;
             }
-            if rng.gen::<f64>() < (-delta / thermostat.temp()).exp() {
+            if rng.gen::<f64>() < (-delta / temp).exp() {
                 continue;
             }
             state.set_at(site, old_spin);
@@ -89,7 +88,7 @@ where
     fn step<R: Rng, H: HamiltonianComponent<S>>(
         &self,
         rng: &mut R,
-        thermostat: &Thermostat,
+        temp: f64,
         hamiltonian: &H,
         mut state: State<S>,
     ) -> State<S> {
@@ -104,7 +103,7 @@ where
             if delta < 0.0 {
                 continue;
             }
-            if rng.gen::<f64>() < (-delta / thermostat.temp()).exp() {
+            if rng.gen::<f64>() < (-delta / temp).exp() {
                 continue;
             }
             state.set_at(site, old_spin);
