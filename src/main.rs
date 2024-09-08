@@ -8,7 +8,7 @@ extern crate vegas_lattice;
 use std::fs::File;
 use std::io::Read;
 
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
 use vegas_lattice::{Axis, Lattice};
@@ -16,6 +16,7 @@ use vegas_lattice::{Axis, Lattice};
 use vegas::{
     error::Result,
     hamiltonian::Exchage,
+    input::{Input, Model},
     integrator::{MetropolisFlipIntegrator, MetropolisIntegrator},
     machine::Machine,
     program::{CurieTemp, Program, Relax},
@@ -93,12 +94,6 @@ fn check_error(res: Result<()>) {
     }
 }
 
-#[derive(Debug, Clone, ValueEnum)]
-enum Model {
-    Ising,
-    Heisenberg,
-}
-
 #[derive(Debug, Subcommand)]
 enum SubCommand {
     #[command(about = "Run 2D Ising model")]
@@ -120,6 +115,8 @@ enum SubCommand {
         /// Path to the lattice file
         lattice: String,
     },
+    #[command(about = "Generate a sample input file")]
+    Input,
 }
 
 #[derive(Parser, Debug)]
@@ -135,5 +132,10 @@ fn main() {
         SubCommand::Ising { length } => check_error(bench_ising(length)),
         SubCommand::Bench { length, model } => check_error(bench_model(model, length)),
         SubCommand::Lattice { lattice, model } => check_error(bench_lattice(model, &lattice)),
+        SubCommand::Input => {
+            let input = Input::default();
+            let input = toml::to_string_pretty(&input).unwrap();
+            println!("{}", input);
+        }
     }
 }

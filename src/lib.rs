@@ -52,6 +52,7 @@ extern crate vegas_lattice;
 pub mod error;
 #[macro_use]
 pub mod hamiltonian;
+pub mod input;
 pub mod integrator;
 pub mod machine;
 pub mod observables;

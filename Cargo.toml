@@ -17,3 +17,5 @@ sprs = "0.11.1"
 clap = { version = "4.4.6", features = ["cargo", "derive"] }
 rand_pcg = "0.3.1"
 thiserror = "1.0.63"
+toml = { version = "0.8.19", features = ["preserve_order"] }
+serde = { version = "1.0.210", features = ["derive"] }
