@@ -3,6 +3,8 @@
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 
+use crate::program::{CurieTemp, HysteresisLoop, Relax};
+
 #[derive(Debug, Clone, ValueEnum, Serialize, Deserialize)]
 pub enum Model {
     /// Ising model
@@ -18,6 +20,7 @@ impl Default for Model {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum UnitCellName {
     /// Simple cubic
     SC,
@@ -35,7 +38,9 @@ impl Default for UnitCellName {
     }
 }
 
+/// Unit cell to simulate.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum UnitCell {
     /// Unit cell by name
     Name(UnitCellName),
@@ -49,6 +54,7 @@ impl Default for UnitCell {
     }
 }
 
+/// Size to expand the unit cell.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct UnitCellSize {
     pub x: usize,
@@ -62,6 +68,7 @@ impl Default for UnitCellSize {
     }
 }
 
+/// Periodic boundary conditions.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PeriodicBoundaryConditions {
     pub x: bool,
@@ -79,16 +86,51 @@ impl Default for PeriodicBoundaryConditions {
     }
 }
 
+/// Sample to simulate.
 #[derive(Debug, Default, Deserialize, Serialize)]
-pub struct Create {
+pub struct Sample {
     /// Unit cell to create
     pub unitcell: UnitCell,
+    /// Size to expand the unit cell
     pub size: UnitCellSize,
+    /// Periodic boundary conditions
     pub pbc: PeriodicBoundaryConditions,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(tag = "program")]
+pub enum Program {
+    /// Relaxation
+    Relax(Relax),
+    /// Curie temperature
+    CurieTemp(CurieTemp),
+    /// Hysteresis loop
+    Hysteresis(HysteresisLoop),
+}
+
+impl Default for Program {
+    fn default() -> Self {
+        Program::Relax(Relax::default())
+    }
+}
+
+/// Input for a generic simulation.
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Input {
     /// Model to simulate
-    pub create: Create,
+    pub sample: Sample,
+    /// Steps to take
+    pub steps: Vec<Program>,
+}
+
+impl Default for Input {
+    fn default() -> Self {
+        Input {
+            sample: Sample::default(),
+            steps: vec![
+                Program::Relax(Relax::default()),
+                Program::CurieTemp(CurieTemp::default()),
+            ],
+        }
+    }
 }
