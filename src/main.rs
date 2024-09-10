@@ -7,6 +7,7 @@ extern crate vegas_lattice;
 
 use std::fs::File;
 use std::io::Read;
+use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use rand::SeedableRng;
@@ -87,6 +88,21 @@ fn bench_lattice(model: Model, input: &str) -> Result<()> {
     bench(lattice, model)
 }
 
+fn run_input(input: PathBuf) -> Result<()> {
+    let mut data = String::new();
+    let mut file = File::open(input)?;
+    file.read_to_string(&mut data)?;
+    let input: Input = toml::from_str(&data)?;
+    input.run()
+}
+
+fn print_default_input() -> Result<()> {
+    let input = Input::default();
+    let input = toml::to_string_pretty(&input)?;
+    println!("{}", input);
+    Ok(())
+}
+
 fn check_error(res: Result<()>) {
     if let Err(e) = res {
         eprintln!("Error: {}", e);
@@ -117,10 +133,12 @@ enum SubCommand {
     },
     #[command(about = "Generate a sample input file")]
     Input,
+    #[command(about = "Run the program")]
+    Run { input: PathBuf },
 }
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about=None)]
+#[command(author, version, about, long_about)]
 struct Cli {
     #[clap(subcommand)]
     subcmd: SubCommand,
@@ -132,10 +150,7 @@ fn main() {
         SubCommand::Ising { length } => check_error(bench_ising(length)),
         SubCommand::Bench { length, model } => check_error(bench_model(model, length)),
         SubCommand::Lattice { lattice, model } => check_error(bench_lattice(model, &lattice)),
-        SubCommand::Input => {
-            let input = Input::default();
-            let input = toml::to_string_pretty(&input).unwrap();
-            println!("{}", input);
-        }
+        SubCommand::Input => check_error(print_default_input()),
+        SubCommand::Run { input } => check_error(run_input(input)),
     }
 }
