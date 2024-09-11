@@ -116,7 +116,7 @@ impl Display for Sensor {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{:.8} {:.8} {:.8} {:.8} {:.8} {:.8}",
+            "{:.16} {:.16} {:.16} {:.16} {:.16} {:.16}",
             self.beta(),
             self.energy(),
             self.specific_heat(),
