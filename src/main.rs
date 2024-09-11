@@ -93,7 +93,8 @@ fn run_input(input: PathBuf) -> Result<()> {
     let mut file = File::open(input)?;
     file.read_to_string(&mut data)?;
     let input: Input = toml::from_str(&data)?;
-    input.run()
+    let mut rng = Pcg64::from_entropy();
+    input.run(&mut rng)
 }
 
 fn print_default_input() -> Result<()> {

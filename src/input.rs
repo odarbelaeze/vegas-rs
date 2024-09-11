@@ -1,8 +1,7 @@
 //! Input for a generic simulation.
 
 use clap::ValueEnum;
-use rand::SeedableRng;
-use rand_pcg::Pcg64;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use vegas_lattice::Lattice;
 
@@ -146,9 +145,8 @@ impl Input {
         }
     }
 
-    fn run_with_spin<T: Spin>(&self) -> Result<()> {
+    fn run_with_spin<T: Spin, R: Rng>(&self, rng: &mut R) -> Result<()> {
         let lattice = self.lattice();
-        let mut rng = Pcg64::from_entropy();
         let integrator = MetropolisIntegrator::new();
         let hamiltonian = Exchage::from_lattice(&lattice);
         let mut machine = Machine::new(
@@ -156,18 +154,18 @@ impl Input {
             0.0,
             hamiltonian,
             integrator,
-            State::<T>::rand_with_size(&mut rng, lattice.sites().len()),
+            State::<T>::rand_with_size(rng, lattice.sites().len()),
         );
         for program in self.steps.iter() {
             match program {
                 Step::Relax(relax) => {
-                    relax.run(&mut rng, &mut machine)?;
+                    relax.run(rng, &mut machine)?;
                 }
                 Step::CurieTemp(curie) => {
-                    curie.run(&mut rng, &mut machine)?;
+                    curie.run(rng, &mut machine)?;
                 }
                 Step::Hysteresis(hysteresis) => {
-                    hysteresis.run(&mut rng, &mut machine)?;
+                    hysteresis.run(rng, &mut machine)?;
                 }
             }
         }
@@ -206,10 +204,10 @@ impl Input {
         lattice
     }
 
-    pub fn run(&self) -> Result<()> {
+    pub fn run<R: Rng>(&self, rng: &mut R) -> Result<()> {
         match self.model {
-            Model::Ising => self.run_with_spin::<IsingSpin>(),
-            Model::Heisenberg => self.run_with_spin::<HeisenbergSpin>(),
+            Model::Ising => self.run_with_spin::<IsingSpin, _>(rng),
+            Model::Heisenberg => self.run_with_spin::<HeisenbergSpin, _>(rng),
         }
     }
 }

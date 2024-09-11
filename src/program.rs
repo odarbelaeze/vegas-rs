@@ -129,7 +129,7 @@ impl CurieTemp {
 
 impl Default for CurieTemp {
     fn default() -> Self {
-        Self::new(3.0, f64::EPSILON, 0.1, 1000, 20000)
+        Self::new(3.0, 2.0 * f64::EPSILON, 0.1, 1000, 20000)
     }
 }
 
