@@ -7,8 +7,9 @@ extern crate vegas_lattice;
 
 use std::fs::File;
 use std::io::Read;
+use std::path::PathBuf;
 
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
 use vegas_lattice::{Axis, Lattice};
@@ -16,6 +17,7 @@ use vegas_lattice::{Axis, Lattice};
 use vegas::{
     error::Result,
     hamiltonian::Exchage,
+    input::{Input, Model},
     integrator::{MetropolisFlipIntegrator, MetropolisIntegrator},
     machine::Machine,
     program::{CurieTemp, Program, Relax},
@@ -86,17 +88,27 @@ fn bench_lattice(model: Model, input: &str) -> Result<()> {
     bench(lattice, model)
 }
 
+fn run_input(input: PathBuf) -> Result<()> {
+    let mut data = String::new();
+    let mut file = File::open(input)?;
+    file.read_to_string(&mut data)?;
+    let input: Input = toml::from_str(&data)?;
+    let mut rng = Pcg64::from_entropy();
+    input.run(&mut rng)
+}
+
+fn print_default_input() -> Result<()> {
+    let input = Input::default();
+    let input = toml::to_string_pretty(&input)?;
+    println!("{}", input);
+    Ok(())
+}
+
 fn check_error(res: Result<()>) {
     if let Err(e) = res {
         eprintln!("Error: {}", e);
         std::process::exit(1);
     }
-}
-
-#[derive(Debug, Clone, ValueEnum)]
-enum Model {
-    Ising,
-    Heisenberg,
 }
 
 #[derive(Debug, Subcommand)]
@@ -120,10 +132,14 @@ enum SubCommand {
         /// Path to the lattice file
         lattice: String,
     },
+    #[command(about = "Generate a sample input file")]
+    Input,
+    #[command(about = "Run the program")]
+    Run { input: PathBuf },
 }
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about=None)]
+#[command(author, version, about, long_about)]
 struct Cli {
     #[clap(subcommand)]
     subcmd: SubCommand,
@@ -135,5 +151,7 @@ fn main() {
         SubCommand::Ising { length } => check_error(bench_ising(length)),
         SubCommand::Bench { length, model } => check_error(bench_model(model, length)),
         SubCommand::Lattice { lattice, model } => check_error(bench_lattice(model, &lattice)),
+        SubCommand::Input => check_error(print_default_input()),
+        SubCommand::Run { input } => check_error(run_input(input)),
     }
 }

@@ -3,6 +3,7 @@
 use std::io::Error as IoError;
 use std::result::Result as StdResult;
 use thiserror::Error;
+use toml::{de::Error as TomlDeserializeError, ser::Error as TomlSerializeError};
 use vegas_lattice::error::VegasLatticeError;
 
 /// Error type for the vegas package
@@ -14,6 +15,10 @@ pub enum VegasError {
     IoError(#[from] IoError),
     #[error("lattice error: {0}")]
     LatticeError(#[from] VegasLatticeError),
+    #[error("toml deserialization error: {0}")]
+    TomlDeserializeError(#[from] TomlDeserializeError),
+    #[error("toml serialization error: {0}")]
+    TomlSerializeError(#[from] TomlSerializeError),
 }
 
 /// Error type for program missconfiguration

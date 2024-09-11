@@ -1,6 +1,7 @@
 //! Programs to run on samples.
 
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     error::{ProgramError, Result},
@@ -22,6 +23,7 @@ pub trait Program {
 }
 
 /// A program that relaxes the system.
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Relax {
     steps: usize,
     temp: f64,
@@ -73,6 +75,7 @@ impl Program for Relax {
 }
 
 /// A program that cools the system to find the Curie temperature.
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CurieTemp {
     max_temp: f64,
     min_temp: f64,
@@ -126,7 +129,7 @@ impl CurieTemp {
 
 impl Default for CurieTemp {
     fn default() -> Self {
-        Self::new(3.0, f64::EPSILON, 0.1, 1000, 20000)
+        Self::new(3.0, 0.1, 0.1, 1000, 20000)
     }
 }
 
@@ -166,6 +169,7 @@ impl Program for CurieTemp {
 }
 
 /// A program that runs a hysteresis loop.
+#[derive(Debug, Deserialize, Serialize)]
 pub struct HysteresisLoop {
     steps: usize,
     relax: usize,
