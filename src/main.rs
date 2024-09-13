@@ -5,9 +5,11 @@ extern crate rand_pcg;
 extern crate sprs;
 extern crate vegas_lattice;
 
-use std::fs::File;
-use std::io::Read;
-use std::path::PathBuf;
+use std::{
+    fs::File,
+    io::Read,
+    path::{Path, PathBuf},
+};
 
 use clap::{Parser, Subcommand};
 use rand::SeedableRng;
@@ -69,7 +71,7 @@ fn bench_model(model: Model, length: usize) -> Result<()> {
     bench(lattice, model)
 }
 
-fn bench_lattice(model: Model, input: &str) -> Result<()> {
+fn bench_lattice(model: Model, input: &Path) -> Result<()> {
     let mut data = String::new();
     let mut file = File::open(input)?;
     file.read_to_string(&mut data)?;
@@ -124,7 +126,7 @@ enum SubCommand {
         /// Model to run
         model: Model,
         /// Path to the lattice file
-        lattice: String,
+        lattice: PathBuf,
     },
     #[command(about = "Generate a sample input file")]
     Input,
