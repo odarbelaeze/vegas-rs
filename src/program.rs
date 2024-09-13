@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     error::{ProgramError, Result},
-    hamiltonian::HamiltonianComponent,
+    hamiltonian::Hamiltonian,
     integrator::Integrator,
     machine::Machine,
     state::Spin,
@@ -17,7 +17,7 @@ pub trait Program {
     fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
     where
         S: Spin,
-        H: HamiltonianComponent<S>,
+        H: Hamiltonian<S>,
         I: Integrator<S>,
         R: Rng;
 }
@@ -42,7 +42,7 @@ impl Relax {
     }
 
     /// Set the temperature.
-    pub fn set_temp(mut self, temp: f64) -> Self {
+    pub fn set_temperature(mut self, temp: f64) -> Self {
         self.temp = temp;
         self
     }
@@ -58,7 +58,7 @@ impl Program for Relax {
     fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
     where
         I: Integrator<S>,
-        H: HamiltonianComponent<S>,
+        H: Hamiltonian<S>,
         S: Spin,
         R: Rng,
     {
@@ -76,7 +76,7 @@ impl Program for Relax {
 
 /// A program that cools the system to find the Curie temperature.
 #[derive(Debug, Deserialize, Serialize)]
-pub struct CurieTemp {
+pub struct CoolDown {
     max_temp: f64,
     min_temp: f64,
     cool_rate: f64,
@@ -84,7 +84,7 @@ pub struct CurieTemp {
     steps: usize,
 }
 
-impl CurieTemp {
+impl CoolDown {
     /// Create a new Curie temperature program.
     pub fn new(max_temp: f64, min_temp: f64, cool_rate: f64, relax: usize, steps: usize) -> Self {
         Self {
@@ -97,13 +97,13 @@ impl CurieTemp {
     }
 
     /// Set the maximum temperature.
-    pub fn set_max_temp(mut self, max_temp: f64) -> Self {
+    pub fn set_max_temperature(mut self, max_temp: f64) -> Self {
         self.max_temp = max_temp;
         self
     }
 
     /// Set the minimum temperature.
-    pub fn set_min_temp(mut self, min_temp: f64) -> Self {
+    pub fn set_min_temperature(mut self, min_temp: f64) -> Self {
         self.min_temp = min_temp;
         self
     }
@@ -127,17 +127,17 @@ impl CurieTemp {
     }
 }
 
-impl Default for CurieTemp {
+impl Default for CoolDown {
     fn default() -> Self {
         Self::new(3.0, 0.1, 0.1, 1000, 20000)
     }
 }
 
-impl Program for CurieTemp {
+impl Program for CoolDown {
     fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
     where
         I: Integrator<S>,
-        H: HamiltonianComponent<S>,
+        H: Hamiltonian<S>,
         S: Spin,
         R: Rng,
     {
@@ -232,7 +232,7 @@ impl Program for HysteresisLoop {
     where
         R: Rng,
         I: Integrator<S>,
-        H: HamiltonianComponent<S>,
+        H: Hamiltonian<S>,
         S: Spin,
     {
         if self.steps == 0 {

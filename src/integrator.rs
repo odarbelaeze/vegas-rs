@@ -4,7 +4,7 @@ use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
 
 use crate::{
-    hamiltonian::HamiltonianComponent,
+    hamiltonian::Hamiltonian,
     state::{Flip, Spin, State},
 };
 
@@ -12,7 +12,7 @@ use crate::{
 /// system.
 pub trait Integrator<S: Spin> {
     /// Perform a single step of the integrator.
-    fn step<R: Rng, H: HamiltonianComponent<S>>(
+    fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
         rng: &mut R,
         temp: f64,
@@ -38,20 +38,20 @@ impl MetropolisIntegrator {
 
 impl<S: Spin> Integrator<S> for MetropolisIntegrator {
     /// Perform a single step of the Metropolis integrator.
-    fn step<R: Rng, H: HamiltonianComponent<S>>(
+    fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
         rng: &mut R,
         temp: f64,
         hamiltonian: &H,
         mut state: State<S>,
     ) -> State<S> {
-        let sites = Uniform::new(0, state.len());
+        let distribution = Uniform::new(0, state.len());
         for _ in 0..state.len() {
-            let site = sites.sample(rng);
-            let old_energy = hamiltonian.energy(&state, site);
-            let old_spin = state.at(site).clone();
-            state.set_at(site, Spin::rand(rng));
-            let new_energy = hamiltonian.energy(&state, site);
+            let site_index = distribution.sample(rng);
+            let old_energy = hamiltonian.energy(&state, site_index);
+            let old_spin = state.at(site_index).clone();
+            state.set_at(site_index, Spin::rand(rng));
+            let new_energy = hamiltonian.energy(&state, site_index);
             let delta = new_energy - old_energy;
             if delta < 0.0 {
                 continue;
@@ -59,7 +59,7 @@ impl<S: Spin> Integrator<S> for MetropolisIntegrator {
             if rng.gen::<f64>() < (-delta / temp).exp() {
                 continue;
             }
-            state.set_at(site, old_spin);
+            state.set_at(site_index, old_spin);
         }
         state
     }
@@ -85,7 +85,7 @@ where
     S: Spin + Flip,
 {
     /// Perform a single step of the Metropolis integrator.
-    fn step<R: Rng, H: HamiltonianComponent<S>>(
+    fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
         rng: &mut R,
         temp: f64,

@@ -3,7 +3,7 @@
 use rand::Rng;
 
 use crate::{
-    hamiltonian::{HamiltonianComponent, ZeemanEnergy},
+    hamiltonian::{Hamiltonian, ZeemanEnergy},
     integrator::Integrator,
     observables::Sensor,
     state::{Spin, State},
@@ -11,7 +11,7 @@ use crate::{
 
 pub struct Machine<H, I, S>
 where
-    H: HamiltonianComponent<S>,
+    H: Hamiltonian<S>,
     I: Integrator<S>,
     S: Spin,
 {
@@ -24,7 +24,7 @@ where
 
 impl<H, I, S> Machine<H, I, S>
 where
-    H: HamiltonianComponent<S>,
+    H: Hamiltonian<S>,
     I: Integrator<S>,
     S: Spin,
 {

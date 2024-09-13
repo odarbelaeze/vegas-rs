@@ -1,10 +1,3 @@
-#[macro_use]
-extern crate vegas;
-extern crate clap;
-extern crate rand_pcg;
-extern crate sprs;
-extern crate vegas_lattice;
-
 use std::{
     fs::File,
     io::Read,
@@ -18,19 +11,19 @@ use vegas_lattice::Lattice;
 
 use vegas::{
     error::Result,
-    hamiltonian::Exchage,
+    hamiltonian::Exchange,
     input::{Input, Model},
     integrator::{MetropolisFlipIntegrator, MetropolisIntegrator},
     machine::Machine,
-    program::{CurieTemp, Program, Relax},
+    program::{CoolDown, Program, Relax},
     state::{HeisenbergSpin, IsingSpin, State},
 };
 
 fn bench(lattice: Lattice, model: Model) -> Result<()> {
-    let hamiltonian = hamiltonian!(Exchage::from_lattice(&lattice));
+    let hamiltonian = Exchange::from_lattice(&lattice);
     match model {
         Model::Ising => {
-            let program = CurieTemp::default().set_max_temp(5.0);
+            let program = CoolDown::default().set_max_temperature(5.0);
             let mut rng = Pcg64::from_entropy();
             let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
@@ -38,7 +31,7 @@ fn bench(lattice: Lattice, model: Model) -> Result<()> {
             program.run(&mut rng, &mut machine)
         }
         Model::Heisenberg => {
-            let program = CurieTemp::default().set_max_temp(2.5);
+            let program = CoolDown::default().set_max_temperature(2.5);
             let mut rng = Pcg64::from_entropy();
             let state = State::<HeisenbergSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
@@ -50,13 +43,13 @@ fn bench(lattice: Lattice, model: Model) -> Result<()> {
 
 fn bench_ising(length: usize) -> Result<()> {
     let lattice = Lattice::sc(1.0).expand_x(length).expand_y(length).drop_z();
-    let hamiltonian = hamiltonian!(Exchage::from_lattice(&lattice));
+    let hamiltonian = Exchange::from_lattice(&lattice);
     let cool_rate = 0.05;
-    let relax = Relax::default().set_steps(500000).set_temp(2.8);
-    let curie = CurieTemp::default()
+    let relax = Relax::default().set_steps(500000).set_temperature(2.8);
+    let curie = CoolDown::default()
         .set_steps(500000)
-        .set_max_temp(2.8)
-        .set_min_temp(1.8)
+        .set_max_temperature(2.8)
+        .set_min_temperature(1.8)
         .set_cool_rate(cool_rate);
     let mut rng = Pcg64::from_entropy();
     let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
@@ -109,32 +102,32 @@ fn check_error(res: Result<()>) {
 
 #[derive(Debug, Subcommand)]
 enum SubCommand {
-    #[command(about = "Run 2D Ising model")]
+    /// Run a 2D Ising model
     Ising {
         /// Length of the side lattice
         length: usize,
     },
-    #[command(about = "Run benchmark")]
+    /// Run benchmarks
     Bench {
         /// Model to run
         model: Model,
         /// Length of the side lattice
         length: usize,
     },
-    #[command(about = "Simulate the given lattice")]
+    /// Run a lattice
     Lattice {
         /// Model to run
         model: Model,
         /// Path to the lattice file
         lattice: PathBuf,
     },
-    #[command(about = "Generate a sample input file")]
+    /// Print the default input
     Input,
-    #[command(about = "Run the program")]
+    /// Run an input file
     Run { input: PathBuf },
 }
 
-#[derive(Parser, Debug)]
+#[derive(Debug, Parser)]
 #[command(author, version, about, long_about)]
 struct Cli {
     #[clap(subcommand)]
