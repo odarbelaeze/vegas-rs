@@ -1,6 +1,6 @@
 [package]
 name = "vegas"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Oscar Arbelaez <oscar@arbelaez.dev>"]
 description = "Little Monte Carlo code in rust"
 keywords = ["Monte-Carlo", "MCMC", "physics"]
@@ -12,7 +12,7 @@ edition = "2021"
 
 [dependencies]
 rand = { version = "0.8.5", features = ["small_rng"] }
-vegas-lattice = "0.7"
+vegas-lattice = "0.8"
 sprs = "0.11.1"
 clap = { version = "4.4.6", features = ["cargo", "derive"] }
 rand_pcg = "0.3.1"
