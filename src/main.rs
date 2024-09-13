@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
-use vegas_lattice::{Axis, Lattice};
+use vegas_lattice::Lattice;
 
 use vegas::{
     error::Result,
@@ -47,10 +47,7 @@ fn bench(lattice: Lattice, model: Model) -> Result<()> {
 }
 
 fn bench_ising(length: usize) -> Result<()> {
-    let lattice = Lattice::sc(1.0)
-        .expand_along(Axis::X, length)
-        .expand_along(Axis::Y, length)
-        .drop(Axis::Z);
+    let lattice = Lattice::sc(1.0).expand_x(length).expand_y(length).drop_z();
     let hamiltonian = hamiltonian!(Exchage::from_lattice(&lattice));
     let cool_rate = 0.05;
     let relax = Relax::default().set_steps(500000).set_temp(2.8);
@@ -68,10 +65,7 @@ fn bench_ising(length: usize) -> Result<()> {
 }
 
 fn bench_model(model: Model, length: usize) -> Result<()> {
-    let lattice = Lattice::sc(1.0)
-        .expand_along(Axis::X, length)
-        .expand_along(Axis::Y, length)
-        .expand_along(Axis::Z, length);
+    let lattice = Lattice::sc(1.0).expand_all(length);
     bench(lattice, model)
 }
 

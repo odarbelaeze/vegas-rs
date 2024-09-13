@@ -188,18 +188,15 @@ impl Input {
             y: pbc_y,
             z: pbc_z,
         } = self.sample.pbc;
-        let mut lattice = unitcell
-            .expand_along(vegas_lattice::Axis::X, x)
-            .expand_along(vegas_lattice::Axis::Y, y)
-            .expand_along(vegas_lattice::Axis::Z, z);
+        let mut lattice = unitcell.expand(x, y, z);
         if !pbc_x {
-            lattice = lattice.drop(vegas_lattice::Axis::X);
+            lattice = lattice.drop_x();
         }
         if !pbc_y {
-            lattice = lattice.drop(vegas_lattice::Axis::Y);
+            lattice = lattice.drop_y();
         }
         if !pbc_z {
-            lattice = lattice.drop(vegas_lattice::Axis::Z);
+            lattice = lattice.drop_z();
         }
         lattice
     }
