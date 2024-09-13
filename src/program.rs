@@ -68,7 +68,7 @@ impl Program for Relax {
         if self.temp < f64::EPSILON {
             return Err(ProgramError::ZeroTemp.into());
         }
-        machine.set_temp(self.temp);
+        machine.set_temperature(self.temp);
         let _sensor = machine.run(rng, self.steps);
         Ok(())
     }
@@ -155,7 +155,7 @@ impl Program for CoolDown {
         }
         let mut temp = self.max_temp;
         loop {
-            machine.set_temp(temp);
+            machine.set_temperature(temp);
             let _sensor = machine.run(rng, self.relax);
             let sensor = machine.run(rng, self.steps);
             println!("{}", sensor);
@@ -247,7 +247,7 @@ impl Program for HysteresisLoop {
         if self.field_step < f64::EPSILON {
             return Err(ProgramError::ZeroFieldStep.into());
         }
-        machine.set_temp(self.temp);
+        machine.set_temperature(self.temp);
         let mut field = 0.0;
         loop {
             machine.set_field(field);

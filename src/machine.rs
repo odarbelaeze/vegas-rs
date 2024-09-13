@@ -9,6 +9,7 @@ use crate::{
     state::{Spin, State},
 };
 
+/// A box containing the sample with a given temperature and field.
 pub struct Machine<H, I, S>
 where
     H: Hamiltonian<S>,
@@ -28,6 +29,7 @@ where
     I: Integrator<S>,
     S: Spin,
 {
+    /// Create a new machine with a given temperature, field, hamiltonian,
     pub fn new(temp: f64, field: f64, hamiltonian: H, integrator: I, state: State<S>) -> Self {
         Machine {
             temp,
@@ -38,17 +40,20 @@ where
         }
     }
 
-    pub fn set_temp(&mut self, temp: f64) {
+    /// Set the temperature of the machine.
+    pub fn set_temperature(&mut self, temp: f64) {
         if temp < f64::EPSILON {
             return;
         }
         self.temp = temp;
     }
 
+    /// Set the field of the machine.
     pub fn set_field(&mut self, field: f64) {
         self.field = field;
     }
 
+    /// Run and observe the machine for a given number of steps.
     pub fn run<R: Rng>(&mut self, rng: &mut R, steps: usize) -> Sensor {
         let mut sensor = Sensor::new(self.temp);
         if self.field != 0.0 {
