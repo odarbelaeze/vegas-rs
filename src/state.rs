@@ -37,7 +37,7 @@ pub trait Flip {
 }
 
 /// This trait represents a magnetization.
-pub trait Magnetization: Default + Clone + Add<Self, Output = Self> + Sum<Self::SpinType> {
+pub trait Magnetization: Default + Clone + Sum<Self::SpinType> {
     type SpinType: Spin;
 
     /// Create a new magnetization.
@@ -151,12 +151,13 @@ impl Add for IsingSpin {
     type Output = IsingMagnetization;
 
     fn add(self, other: IsingSpin) -> IsingMagnetization {
+        use IsingSpin::{Down, Up};
         match (self, other) {
-            (IsingSpin::Up, IsingSpin::Up) => IsingMagnetization {
+            (Up, Up) => IsingMagnetization {
                 magnitude: 2,
                 reference: IsingSpin::up(),
             },
-            (IsingSpin::Down, IsingSpin::Down) => IsingMagnetization {
+            (Down, Down) => IsingMagnetization {
                 magnitude: 2,
                 reference: IsingSpin::down(),
             },
@@ -164,34 +165,6 @@ impl Add for IsingSpin {
                 magnitude: 0,
                 reference: IsingSpin::up(),
             },
-        }
-    }
-}
-
-impl Add for IsingMagnetization {
-    type Output = IsingMagnetization;
-
-    fn add(self, other: IsingMagnetization) -> IsingMagnetization {
-        match (&self.reference, &other.reference) {
-            (IsingSpin::Up, IsingSpin::Up) | (IsingSpin::Down, IsingSpin::Down) => {
-                IsingMagnetization {
-                    magnitude: self.magnitude + other.magnitude,
-                    reference: self.reference,
-                }
-            }
-            _ => {
-                if self.magnitude > other.magnitude {
-                    IsingMagnetization {
-                        magnitude: self.magnitude - other.magnitude,
-                        reference: self.reference,
-                    }
-                } else {
-                    IsingMagnetization {
-                        magnitude: other.magnitude - self.magnitude,
-                        reference: other.reference,
-                    }
-                }
-            }
         }
     }
 }
@@ -322,16 +295,6 @@ impl Add for HeisenbergSpin {
     }
 }
 
-impl Add for HeisenbergMagnetization {
-    type Output = HeisenbergMagnetization;
-
-    fn add(self, other: HeisenbergMagnetization) -> HeisenbergMagnetization {
-        let HeisenbergMagnetization(a) = self;
-        let HeisenbergMagnetization(b) = other;
-        HeisenbergMagnetization([a[0] + b[0], a[1] + b[1], a[2] + b[2]])
-    }
-}
-
 impl Add<HeisenbergSpin> for HeisenbergMagnetization {
     type Output = HeisenbergMagnetization;
 
@@ -392,8 +355,7 @@ impl<T: Spin> State<T> {
     pub fn magnetization(&self) -> T::MagnetizationType
     where
         T: Spin + Add<T, Output = T::MagnetizationType> + Clone,
-        T::MagnetizationType:
-            Default + Add<T::MagnetizationType, Output = T::MagnetizationType> + Sum<T>,
+        T::MagnetizationType: Default + Sum<T>,
     {
         self.spins().iter().cloned().sum()
     }
