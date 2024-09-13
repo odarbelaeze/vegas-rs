@@ -22,10 +22,6 @@ pub trait Spin: Clone + Add<Self, Output = Self::MagnetizationType> {
     /// New up a random spin.
     fn rand<T: Rng>(rng: &mut T) -> Self;
 
-    #[deprecated(since = "0.0.4", note = "Use `&s1.dot(&s2)` instead")]
-    /// Interact with another spin
-    fn interact(&self, other: &Self) -> f64;
-
     /// Dot product of two spins.
     fn dot(&self, other: &Self) -> f64;
 }
@@ -80,10 +76,6 @@ impl Spin for IsingSpin {
         } else {
             IsingSpin::Down
         }
-    }
-
-    fn interact(&self, other: &Self) -> f64 {
-        self.dot(other)
     }
 
     #[inline]
@@ -223,10 +215,6 @@ impl Spin for HeisenbergSpin {
             let z = 1f64 - 2f64 * (x1 * x1 + x2 * x2);
             return HeisenbergSpin([x, y, z]);
         }
-    }
-
-    fn interact(&self, other: &Self) -> f64 {
-        self.dot(other)
     }
 
     #[inline]
