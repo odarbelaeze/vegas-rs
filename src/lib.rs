@@ -45,10 +45,6 @@
 //! * `ZeemanEnergy` - A hamiltonian that calculates the Zeeman energy of a spin system.
 //! * `Compound` - A hamiltonian that combines multiple hamiltonians.
 
-extern crate rand;
-extern crate sprs;
-extern crate vegas_lattice;
-
 pub mod error;
 #[macro_use]
 pub mod hamiltonian;
@@ -58,3 +54,4 @@ pub mod machine;
 pub mod observables;
 pub mod program;
 pub mod state;
+mod util;

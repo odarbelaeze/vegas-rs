@@ -12,7 +12,7 @@ use vegas_lattice::Lattice;
 ///
 /// An energy component is characterized by the fact that it can
 /// compute the energy of a given site for a given state.
-pub trait HamiltonianComponent<S: Spin>: Clone {
+pub trait Hamiltonian<S: Spin>: Clone {
     /// Get the energy of a given site for a state.
     ///
     /// Panics:
@@ -30,7 +30,7 @@ pub trait HamiltonianComponent<S: Spin>: Clone {
 }
 
 /// Some constant energy that doesn't depend on the state.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Gauge {
     value: f64,
 }
@@ -42,7 +42,7 @@ impl Gauge {
     }
 }
 
-impl<T: Spin> HamiltonianComponent<T> for Gauge {
+impl<T: Spin> Hamiltonian<T> for Gauge {
     fn energy(&self, state: &State<T>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         self.value
@@ -50,7 +50,7 @@ impl<T: Spin> HamiltonianComponent<T> for Gauge {
 }
 
 /// Strong preference for a given axis.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct UniaxialAnisotropy<S>
 where
     S: Spin,
@@ -71,7 +71,7 @@ where
     }
 }
 
-impl<S> HamiltonianComponent<S> for UniaxialAnisotropy<S>
+impl<S> Hamiltonian<S> for UniaxialAnisotropy<S>
 where
     S: Spin,
 {
@@ -91,7 +91,7 @@ where
 }
 
 /// Energy resulting from a magnetic field.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ZeemanEnergy<S>
 where
     S: Spin,
@@ -112,7 +112,7 @@ where
     }
 }
 
-impl<S> HamiltonianComponent<S> for ZeemanEnergy<S>
+impl<S> Hamiltonian<S> for ZeemanEnergy<S>
 where
     S: Spin,
 {
@@ -132,19 +132,19 @@ where
 }
 
 /// Energy resulting from the exchange interaction.
-#[derive(Clone)]
-pub struct Exchage {
+#[derive(Clone, Debug)]
+pub struct Exchange {
     exchange: CsMat<f64>,
 }
 
-impl Exchage {
+impl Exchange {
     pub fn new(exc: CsMat<f64>) -> Self {
         Self { exchange: exc }
     }
 
     pub fn from_lattice(lattice: &Lattice) -> Self {
         let nsites = lattice.sites().len();
-        let mut mat = TriMat::new((nsites, nsites));
+        let mut mat = TriMat::<f64>::new((nsites, nsites));
         for vertex in lattice.vertices() {
             if vertex.source() <= vertex.target() {
                 mat.add_triplet(vertex.source(), vertex.target(), 1.0);
@@ -156,7 +156,7 @@ impl Exchage {
     }
 }
 
-impl<S> HamiltonianComponent<S> for Exchage
+impl<S> Hamiltonian<S> for Exchange
 where
     S: Spin,
 {
@@ -186,12 +186,12 @@ where
 ///
 /// The key point here is that you one of the energy components
 /// can be a compound energy itself.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Compound<S, U, V>
 where
     S: Spin,
-    U: HamiltonianComponent<S>,
-    V: HamiltonianComponent<S>,
+    U: Hamiltonian<S>,
+    V: Hamiltonian<S>,
 {
     a: U,
     b: V,
@@ -201,8 +201,8 @@ where
 impl<T, U, V> Compound<T, U, V>
 where
     T: Spin,
-    U: HamiltonianComponent<T>,
-    V: HamiltonianComponent<T>,
+    U: Hamiltonian<T>,
+    V: Hamiltonian<T>,
 {
     pub fn new(a: U, b: V) -> Self {
         Self {
@@ -213,11 +213,11 @@ where
     }
 }
 
-impl<S, U, V> HamiltonianComponent<S> for Compound<S, U, V>
+impl<S, U, V> Hamiltonian<S> for Compound<S, U, V>
 where
     S: Spin,
-    U: HamiltonianComponent<S>,
-    V: HamiltonianComponent<S>,
+    U: Hamiltonian<S>,
+    V: Hamiltonian<S>,
 {
     fn energy(&self, state: &State<S>, index: usize) -> f64 {
         self.a.energy(state, index) + self.b.energy(state, index)
@@ -260,7 +260,7 @@ macro_rules! hamiltonian {
 
 #[cfg(test)]
 mod tests {
-    use super::{Compound, Gauge, HamiltonianComponent, UniaxialAnisotropy, ZeemanEnergy};
+    use super::{Compound, Gauge, Hamiltonian, UniaxialAnisotropy, ZeemanEnergy};
     use crate::state::{HeisenbergSpin, Spin, State};
 
     #[test]

@@ -21,15 +21,15 @@ pub enum VegasError {
     TomlSerializeError(#[from] TomlSerializeError),
 }
 
-/// Error type for program missconfiguration
+/// Error type for program misconfiguration
 #[derive(Error, Debug)]
 pub enum ProgramError {
     #[error("maximum temperature must be greater than minimum temperature")]
-    MaxTempLessThanMinTemp,
+    TemperatureMaxLessThanMin,
     #[error("there should be at least one step")]
     NoSteps,
     #[error("temperature must be greater than zero")]
-    ZeroTemp,
+    ZeroTemperature,
     #[error("cooling rate must be greater than zero")]
     ZeroCoolRate,
     #[error("maximum field must be greater than zero")]

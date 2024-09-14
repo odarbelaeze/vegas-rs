@@ -3,5 +3,5 @@ target
 tags
 data*
 .ropeproject
-target
 Cargo.lock
+.idea

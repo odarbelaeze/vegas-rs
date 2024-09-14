@@ -7,10 +7,10 @@ use vegas_lattice::Lattice;
 
 use crate::{
     error::Result,
-    hamiltonian::Exchage,
+    hamiltonian::Exchange,
     integrator::MetropolisIntegrator,
     machine::Machine,
-    program::{CurieTemp, HysteresisLoop, Program, Relax},
+    program::{CoolDown, HysteresisLoop, Program, Relax},
     state::{HeisenbergSpin, IsingSpin, Spin, State},
 };
 
@@ -100,7 +100,7 @@ pub enum Step {
     /// Relaxation
     Relax(Relax),
     /// Curie temperature
-    CurieTemp(CurieTemp),
+    CoolDown(CoolDown),
     /// Hysteresis loop
     Hysteresis(HysteresisLoop),
 }
@@ -129,7 +129,7 @@ impl Default for Input {
             sample: Sample::default(),
             steps: vec![
                 Step::Relax(Relax::default()),
-                Step::CurieTemp(CurieTemp::default()),
+                Step::CoolDown(CoolDown::default()),
             ],
         }
     }
@@ -148,7 +148,7 @@ impl Input {
     fn run_with_spin<T: Spin, R: Rng>(&self, rng: &mut R) -> Result<()> {
         let lattice = self.lattice();
         let integrator = MetropolisIntegrator::new();
-        let hamiltonian = Exchage::from_lattice(&lattice);
+        let hamiltonian = Exchange::from_lattice(&lattice);
         let mut machine = Machine::new(
             2.8,
             0.0,
@@ -161,7 +161,7 @@ impl Input {
                 Step::Relax(relax) => {
                     relax.run(rng, &mut machine)?;
                 }
-                Step::CurieTemp(curie) => {
+                Step::CoolDown(curie) => {
                     curie.run(rng, &mut machine)?;
                 }
                 Step::Hysteresis(hysteresis) => {

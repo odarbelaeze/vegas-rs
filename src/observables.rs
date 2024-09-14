@@ -4,7 +4,7 @@ use core::fmt;
 use std::fmt::{Display, Formatter};
 
 use crate::{
-    hamiltonian::HamiltonianComponent,
+    hamiltonian::Hamiltonian,
     state::{Magnetization, Spin, State},
 };
 
@@ -72,7 +72,7 @@ impl Sensor {
     /// Observe the state of the system.
     pub fn observe<H, S>(&mut self, hamiltonian: &H, state: &State<S>)
     where
-        H: HamiltonianComponent<S>,
+        H: Hamiltonian<S>,
         S: Spin,
     {
         self.energy
