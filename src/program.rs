@@ -26,13 +26,13 @@ pub trait Program {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Relax {
     steps: usize,
-    temp: f64,
+    temperature: f64,
 }
 
 impl Relax {
     /// Create a new relaxation program.
-    pub fn new(steps: usize, temp: f64) -> Self {
-        Self { steps, temp }
+    pub fn new(steps: usize, temperature: f64) -> Self {
+        Self { steps, temperature }
     }
 
     /// Set the number of steps.
@@ -42,8 +42,8 @@ impl Relax {
     }
 
     /// Set the temperature.
-    pub fn set_temperature(mut self, temp: f64) -> Self {
-        self.temp = temp;
+    pub fn set_temperature(mut self, temperature: f64) -> Self {
+        self.temperature = temperature;
         self
     }
 }
@@ -65,10 +65,10 @@ impl Program for Relax {
         if self.steps == 0 {
             return Err(ProgramError::NoSteps.into());
         }
-        if self.temp < f64::EPSILON {
-            return Err(ProgramError::ZeroTemp.into());
+        if self.temperature < f64::EPSILON {
+            return Err(ProgramError::ZeroTemperature.into());
         }
-        machine.set_temperature(self.temp);
+        machine.set_temperature(self.temperature);
         let _sensor = machine.run(rng, self.steps);
         Ok(())
     }
@@ -77,8 +77,8 @@ impl Program for Relax {
 /// A program that cools the system to find the Curie temperature.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CoolDown {
-    max_temp: f64,
-    min_temp: f64,
+    max_temperature: f64,
+    min_temperature: f64,
     cool_rate: f64,
     relax: usize,
     steps: usize,
@@ -86,10 +86,16 @@ pub struct CoolDown {
 
 impl CoolDown {
     /// Create a new Curie temperature program.
-    pub fn new(max_temp: f64, min_temp: f64, cool_rate: f64, relax: usize, steps: usize) -> Self {
+    pub fn new(
+        max_temperature: f64,
+        min_temperature: f64,
+        cool_rate: f64,
+        relax: usize,
+        steps: usize,
+    ) -> Self {
         Self {
-            max_temp,
-            min_temp,
+            max_temperature,
+            min_temperature,
             cool_rate,
             relax,
             steps,
@@ -98,13 +104,13 @@ impl CoolDown {
 
     /// Set the maximum temperature.
     pub fn set_max_temperature(mut self, max_temp: f64) -> Self {
-        self.max_temp = max_temp;
+        self.max_temperature = max_temp;
         self
     }
 
     /// Set the minimum temperature.
     pub fn set_min_temperature(mut self, min_temp: f64) -> Self {
-        self.min_temp = min_temp;
+        self.min_temperature = min_temp;
         self
     }
 
@@ -141,26 +147,26 @@ impl Program for CoolDown {
         S: Spin,
         R: Rng,
     {
-        if self.max_temp < self.min_temp {
-            return Err(ProgramError::MaxTempLessThanMinTemp.into());
+        if self.max_temperature < self.min_temperature {
+            return Err(ProgramError::TemperatureMaxLessThanMin.into());
         }
         if self.steps == 0 {
             return Err(ProgramError::NoSteps.into());
         }
-        if self.min_temp < f64::EPSILON {
-            return Err(ProgramError::ZeroTemp.into());
+        if self.min_temperature < f64::EPSILON {
+            return Err(ProgramError::ZeroTemperature.into());
         }
         if self.cool_rate < f64::EPSILON {
             return Err(ProgramError::ZeroCoolRate.into());
         }
-        let mut temp = self.max_temp;
+        let mut temperature = self.max_temperature;
         loop {
-            machine.set_temperature(temp);
+            machine.set_temperature(temperature);
             let _sensor = machine.run(rng, self.relax);
             let sensor = machine.run(rng, self.steps);
             println!("{}", sensor);
-            temp -= self.cool_rate;
-            if temp < self.min_temp {
+            temperature -= self.cool_rate;
+            if temperature < self.min_temperature {
                 break;
             }
         }
@@ -173,18 +179,24 @@ impl Program for CoolDown {
 pub struct HysteresisLoop {
     steps: usize,
     relax: usize,
-    temp: f64,
+    temperature: f64,
     max_field: f64,
     field_step: f64,
 }
 
 impl HysteresisLoop {
     /// Create a new hysteresis loop program.
-    pub fn new(steps: usize, relax: usize, temp: f64, max_field: f64, field_step: f64) -> Self {
+    pub fn new(
+        steps: usize,
+        relax: usize,
+        temperature: f64,
+        max_field: f64,
+        field_step: f64,
+    ) -> Self {
         Self {
             steps,
             relax,
-            temp,
+            temperature,
             max_field,
             field_step,
         }
@@ -203,8 +215,8 @@ impl HysteresisLoop {
     }
 
     /// Set the temperature.
-    pub fn set_temp(mut self, temp: f64) -> Self {
-        self.temp = temp;
+    pub fn set_temperature(mut self, temperature: f64) -> Self {
+        self.temperature = temperature;
         self
     }
 
@@ -238,8 +250,8 @@ impl Program for HysteresisLoop {
         if self.steps == 0 {
             return Err(ProgramError::NoSteps.into());
         }
-        if self.temp < f64::EPSILON {
-            return Err(ProgramError::ZeroTemp.into());
+        if self.temperature < f64::EPSILON {
+            return Err(ProgramError::ZeroTemperature.into());
         }
         if self.max_field < f64::EPSILON {
             return Err(ProgramError::ZeroField.into());
@@ -247,7 +259,7 @@ impl Program for HysteresisLoop {
         if self.field_step < f64::EPSILON {
             return Err(ProgramError::ZeroFieldStep.into());
         }
-        machine.set_temperature(self.temp);
+        machine.set_temperature(self.temperature);
         let mut field = 0.0;
         loop {
             machine.set_field(field);

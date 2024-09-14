@@ -16,7 +16,7 @@ where
     I: Integrator<S>,
     S: Spin,
 {
-    temp: f64,
+    temperature: f64,
     field: f64,
     hamiltonian: H,
     integrator: I,
@@ -30,9 +30,9 @@ where
     S: Spin,
 {
     /// Create a new machine with a given temperature, field, hamiltonian,
-    pub fn new(temp: f64, field: f64, hamiltonian: H, integrator: I, state: State<S>) -> Self {
+    pub fn new(temperature: f64, field: f64, hamiltonian: H, integrator: I, state: State<S>) -> Self {
         Machine {
-            temp,
+            temperature,
             field,
             hamiltonian,
             integrator,
@@ -41,11 +41,11 @@ where
     }
 
     /// Set the temperature of the machine.
-    pub fn set_temperature(&mut self, temp: f64) {
-        if temp < f64::EPSILON {
+    pub fn set_temperature(&mut self, temperature: f64) {
+        if temperature < f64::EPSILON {
             return;
         }
-        self.temp = temp;
+        self.temperature = temperature;
     }
 
     /// Set the field of the machine.
@@ -55,7 +55,7 @@ where
 
     /// Run and observe the machine for a given number of steps.
     pub fn run<R: Rng>(&mut self, rng: &mut R, steps: usize) -> Sensor {
-        let mut sensor = Sensor::new(self.temp);
+        let mut sensor = Sensor::new(self.temperature);
         if self.field != 0.0 {
             let hamiltonian = hamiltonian!(
                 self.hamiltonian.clone(),
@@ -64,7 +64,7 @@ where
             for _ in 0..steps {
                 self.state = self
                     .integrator
-                    .step(rng, self.temp, &hamiltonian, self.state.clone());
+                    .step(rng, self.temperature, &hamiltonian, self.state.clone());
                 sensor.observe(&hamiltonian, &self.state);
             }
             return sensor;
@@ -72,7 +72,7 @@ where
         for _ in 0..steps {
             self.state =
                 self.integrator
-                    .step(rng, self.temp, &self.hamiltonian, self.state.clone());
+                    .step(rng, self.temperature, &self.hamiltonian, self.state.clone());
             sensor.observe(&self.hamiltonian, &self.state);
         }
         sensor

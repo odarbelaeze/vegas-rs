@@ -15,7 +15,7 @@ pub trait Integrator<S: Spin> {
     fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
         rng: &mut R,
-        temp: f64,
+        temperature: f64,
         hamiltonian: &H,
         state: State<S>,
     ) -> State<S>;
@@ -41,7 +41,7 @@ impl<S: Spin> Integrator<S> for MetropolisIntegrator {
     fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
         rng: &mut R,
-        temp: f64,
+        temperature: f64,
         hamiltonian: &H,
         mut state: State<S>,
     ) -> State<S> {
@@ -56,7 +56,7 @@ impl<S: Spin> Integrator<S> for MetropolisIntegrator {
             if delta < 0.0 {
                 continue;
             }
-            if rng.gen::<f64>() < (-delta / temp).exp() {
+            if rng.gen::<f64>() < (-delta / temperature).exp() {
                 continue;
             }
             state.set_at(site_index, old_spin);
@@ -88,7 +88,7 @@ where
     fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
         rng: &mut R,
-        temp: f64,
+        temperature: f64,
         hamiltonian: &H,
         mut state: State<S>,
     ) -> State<S> {
@@ -103,7 +103,7 @@ where
             if delta < 0.0 {
                 continue;
             }
-            if rng.gen::<f64>() < (-delta / temp).exp() {
+            if rng.gen::<f64>() < (-delta / temperature).exp() {
                 continue;
             }
             state.set_at(site, old_spin);
