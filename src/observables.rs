@@ -8,6 +8,12 @@ use crate::{
     state::{Magnetization, Spin, State},
 };
 
+pub struct Reading {
+    pub beta: f64,
+    pub energy: f64,
+    pub magnetization: f64,
+}
+
 struct Accumulator {
     pub sum: f64,
     pub sum_sq: f64,
@@ -56,6 +62,7 @@ impl Default for Accumulator {
 pub struct Sensor {
     energy: Accumulator,
     magnetization: Accumulator,
+    readings: Vec<Reading>,
     beta: f64,
 }
 
@@ -65,6 +72,7 @@ impl Sensor {
         Sensor {
             energy: Accumulator::new(),
             magnetization: Accumulator::new(),
+            readings: Vec::new(),
             beta,
         }
     }
@@ -75,10 +83,15 @@ impl Sensor {
         H: Hamiltonian<S>,
         S: Spin,
     {
-        self.energy
-            .add(hamiltonian.total_energy(state) / state.len() as f64);
-        self.magnetization
-            .add(state.magnetization().magnitude() / state.len() as f64);
+        let energy = hamiltonian.total_energy(state) / state.len() as f64;
+        let magnetization = state.magnetization().magnitude() / state.len() as f64;
+        self.energy.add(energy);
+        self.magnetization.add(magnetization);
+        self.readings.push(Reading {
+            beta: self.beta,
+            energy,
+            magnetization,
+        });
     }
 
     /// Get the beta of the sensor.
@@ -109,6 +122,10 @@ impl Sensor {
     /// Get the Binder cumulant for the magnetization of the sensor.
     pub fn binder_cumulant(&self) -> f64 {
         self.magnetization.binder_cumulant()
+    }
+
+    pub fn readings(self) -> Vec<Reading> {
+        self.readings
     }
 }
 

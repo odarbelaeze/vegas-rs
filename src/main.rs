@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::Read,
+    io::{stdin, Read},
     path::{Path, PathBuf},
 };
 
@@ -10,7 +10,7 @@ use rand_pcg::Pcg64;
 use vegas_lattice::Lattice;
 
 use vegas::{
-    error::Result,
+    error::{IOError, Result},
     hamiltonian::Exchange,
     input::{Input, Model},
     integrator::{MetropolisFlipIntegrator, MetropolisIntegrator},
@@ -28,7 +28,7 @@ fn bench(lattice: Lattice, model: Model) -> Result<()> {
             let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
             let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
-            program.run(&mut rng, &mut machine)
+            program.run(&mut rng, &mut machine, &mut None)
         }
         Model::Heisenberg => {
             let program = CoolDown::default().set_max_temperature(2.5);
@@ -36,7 +36,7 @@ fn bench(lattice: Lattice, model: Model) -> Result<()> {
             let state = State::<HeisenbergSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
             let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
-            program.run(&mut rng, &mut machine)
+            program.run(&mut rng, &mut machine, &mut None)
         }
     }
 }
@@ -55,8 +55,8 @@ fn bench_ising(length: usize) -> Result<()> {
     let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
     let integrator = MetropolisFlipIntegrator::new();
     let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
-    relax.run(&mut rng, &mut machine)?;
-    curie.run(&mut rng, &mut machine)
+    relax.run(&mut rng, &mut machine, &mut None)?;
+    curie.run(&mut rng, &mut machine, &mut None)
 }
 
 fn bench_model(model: Model, length: usize) -> Result<()> {
@@ -66,8 +66,8 @@ fn bench_model(model: Model, length: usize) -> Result<()> {
 
 fn bench_lattice(model: Model, input: &Path) -> Result<()> {
     let mut data = String::new();
-    let mut file = File::open(input)?;
-    file.read_to_string(&mut data)?;
+    let mut file = File::open(input).map_err(IOError::from)?;
+    file.read_to_string(&mut data).map_err(IOError::from)?;
     let lattice: Lattice = data.parse()?;
 
     println!("# Successfuly read the lattice!");
@@ -79,8 +79,12 @@ fn bench_lattice(model: Model, input: &Path) -> Result<()> {
 
 fn run_input(input: PathBuf) -> Result<()> {
     let mut data = String::new();
-    let mut file = File::open(input)?;
-    file.read_to_string(&mut data)?;
+    if input == PathBuf::from("-") {
+        stdin().read_to_string(&mut data).map_err(IOError::from)?;
+    } else {
+        let mut file = File::open(input).map_err(IOError::from)?;
+        file.read_to_string(&mut data).map_err(IOError::from)?;
+    };
     let input: Input = toml::from_str(&data)?;
     let mut rng = Pcg64::from_entropy();
     input.run(&mut rng)

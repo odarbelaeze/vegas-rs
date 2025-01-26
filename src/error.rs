@@ -1,6 +1,8 @@
 //! Errors for the vegas package
 
-use std::io::Error as IoError;
+use arrow::error::ArrowError;
+use parquet::errors::ParquetError;
+use std::io::Error as StdIOError;
 use std::result::Result as StdResult;
 use thiserror::Error;
 use toml::{de::Error as TomlDeserializeError, ser::Error as TomlSerializeError};
@@ -12,7 +14,7 @@ pub enum VegasError {
     #[error("program error: {0}")]
     ProgramError(#[from] ProgramError),
     #[error("io error: {0}")]
-    IoError(#[from] IoError),
+    IOError(#[from] IOError),
     #[error("lattice error: {0}")]
     LatticeError(#[from] VegasLatticeError),
     #[error("toml deserialization error: {0}")]
@@ -36,6 +38,17 @@ pub enum ProgramError {
     ZeroField,
     #[error("field step must be greater than zero")]
     ZeroFieldStep,
+}
+
+// Error type for IO operations
+#[derive(Error, Debug)]
+pub enum IOError {
+    #[error("std io error: {0}")]
+    StdIOError(#[from] StdIOError),
+    #[error("parquet error: {0}")]
+    ParquetError(#[from] ParquetError),
+    #[error("arrow error: {0}")]
+    ArrowError(#[from] ArrowError),
 }
 
 /// Result type for the vegas package

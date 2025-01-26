@@ -50,6 +50,7 @@ pub mod error;
 pub mod hamiltonian;
 pub mod input;
 pub mod integrator;
+pub mod io;
 pub mod machine;
 pub mod observables;
 pub mod program;

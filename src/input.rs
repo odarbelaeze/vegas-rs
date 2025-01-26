@@ -1,5 +1,7 @@
 //! Input for a generic simulation.
 
+use std::path::PathBuf;
+
 use clap::ValueEnum;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -9,6 +11,7 @@ use crate::{
     error::Result,
     hamiltonian::Exchange,
     integrator::MetropolisIntegrator,
+    io::RawIO,
     machine::Machine,
     program::{CoolDown, HysteresisLoop, Program, Relax},
     state::{HeisenbergSpin, IsingSpin, Spin, State},
@@ -94,6 +97,21 @@ pub struct Sample {
     pub pbc: PeriodicBoundaryConditions,
 }
 
+/// Output for a generic simulation.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Output {
+    /// Write the raw data into the given file
+    pub raw: Option<PathBuf>,
+}
+
+impl Default for Output {
+    fn default() -> Self {
+        Self {
+            raw: Some("./output.parquet".into()),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "program")]
 pub enum Step {
@@ -120,35 +138,89 @@ pub struct Input {
     pub sample: Sample,
     /// Steps to take
     pub steps: Vec<Step>,
+    /// Output for the simulation
+    pub output: Option<Output>,
 }
 
 impl Default for Input {
     fn default() -> Self {
         Input {
-            model: Model::default(),
-            sample: Sample::default(),
+            model: Default::default(),
+            sample: Default::default(),
             steps: vec![
                 Step::Relax(Relax::default()),
                 Step::CoolDown(CoolDown::default()),
             ],
+            output: Some(Output::default()),
         }
     }
 }
 
-impl Input {
-    /// Create a new input.
-    pub fn new(model: Model, sample: Sample, steps: Vec<Step>) -> Self {
-        Input {
-            model,
-            sample,
-            steps,
+pub struct InputBuilder {
+    model: Option<Model>,
+    sample: Option<Sample>,
+    steps: Option<Vec<Step>>,
+    output: Option<Output>,
+}
+
+impl InputBuilder {
+    pub fn new() -> Self {
+        InputBuilder {
+            model: None,
+            sample: None,
+            steps: None,
+            output: None,
         }
     }
 
+    pub fn model(mut self, model: Model) -> Self {
+        self.model = Some(model);
+        self
+    }
+
+    pub fn sample(mut self, sample: Sample) -> Self {
+        self.sample = Some(sample);
+        self
+    }
+
+    pub fn steps(mut self, steps: Vec<Step>) -> Self {
+        self.steps = Some(steps);
+        self
+    }
+
+    pub fn output(mut self, output: Output) -> Self {
+        self.output = Some(output);
+        self
+    }
+
+    pub fn build(self) -> Input {
+        Input {
+            model: self.model.unwrap_or_default(),
+            sample: self.sample.unwrap_or_default(),
+            steps: self.steps.unwrap_or_default(),
+            output: self.output,
+        }
+    }
+}
+
+impl Default for InputBuilder {
+    fn default() -> Self {
+        InputBuilder::new()
+    }
+}
+
+impl Input {
     fn run_with_spin<T: Spin, R: Rng>(&self, rng: &mut R) -> Result<()> {
         let lattice = self.lattice();
         let integrator = MetropolisIntegrator::new();
         let hamiltonian = Exchange::from_lattice(&lattice);
+        let mut raw_io = match &self.output {
+            Some(output) => match &output.raw {
+                Some(path) => Some(RawIO::try_new(path)?),
+                None => None,
+            },
+            None => None,
+        };
         let mut machine = Machine::new(
             2.8,
             0.0,
@@ -159,21 +231,23 @@ impl Input {
         for program in self.steps.iter() {
             match program {
                 Step::Relax(relax) => {
-                    relax.run(rng, &mut machine)?;
+                    relax.run(rng, &mut machine, &mut raw_io)?;
                 }
                 Step::CoolDown(curie) => {
-                    curie.run(rng, &mut machine)?;
+                    curie.run(rng, &mut machine, &mut raw_io)?;
                 }
                 Step::Hysteresis(hysteresis) => {
-                    hysteresis.run(rng, &mut machine)?;
+                    hysteresis.run(rng, &mut machine, &mut raw_io)?;
                 }
             }
+        }
+        if let Some(raw_io) = raw_io {
+            raw_io.close()?;
         }
         Ok(())
     }
 
-    /// Get the lattice.
-    pub fn lattice(&self) -> Lattice {
+    fn lattice(&self) -> Lattice {
         let unitcell = match &self.sample.unitcell {
             UnitCell::Name(name) => match name {
                 UnitCellName::SC => Lattice::sc(1.0),

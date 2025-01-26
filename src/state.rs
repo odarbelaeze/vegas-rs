@@ -204,7 +204,7 @@ impl Spin for HeisenbergSpin {
 
     fn rand<T: Rng>(rng: &mut T) -> Self {
         let (x, y, z) = marsaglia(rng);
-        return HeisenbergSpin([x, y, z]);
+        HeisenbergSpin([x, y, z])
     }
 
     #[inline]

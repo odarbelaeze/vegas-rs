@@ -7,6 +7,7 @@ use crate::{
     error::{ProgramError, Result},
     hamiltonian::Hamiltonian,
     integrator::Integrator,
+    io::RawIO,
     machine::Machine,
     state::Spin,
 };
@@ -14,7 +15,12 @@ use crate::{
 /// A program is a sequence of steps that can be run on a system.
 pub trait Program {
     /// Run the program on a system returning the last state.
-    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
+    fn run<R, I, H, S>(
+        &self,
+        rng: &mut R,
+        machine: &mut Machine<H, I, S>,
+        output: &mut Option<RawIO>,
+    ) -> Result<()>
     where
         S: Spin,
         H: Hamiltonian<S>,
@@ -55,7 +61,12 @@ impl Default for Relax {
 }
 
 impl Program for Relax {
-    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
+    fn run<R, I, H, S>(
+        &self,
+        rng: &mut R,
+        machine: &mut Machine<H, I, S>,
+        output: &mut Option<RawIO>,
+    ) -> Result<()>
     where
         I: Integrator<S>,
         H: Hamiltonian<S>,
@@ -69,7 +80,10 @@ impl Program for Relax {
             return Err(ProgramError::ZeroTemperature.into());
         }
         machine.set_temperature(self.temperature);
-        let _sensor = machine.run(rng, self.steps);
+        let sensor = machine.run(rng, self.steps);
+        if let Some(io) = output {
+            io.write(sensor.readings())?;
+        }
         Ok(())
     }
 }
@@ -140,7 +154,12 @@ impl Default for CoolDown {
 }
 
 impl Program for CoolDown {
-    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
+    fn run<R, I, H, S>(
+        &self,
+        rng: &mut R,
+        machine: &mut Machine<H, I, S>,
+        output: &mut Option<RawIO>,
+    ) -> Result<()>
     where
         I: Integrator<S>,
         H: Hamiltonian<S>,
@@ -162,9 +181,15 @@ impl Program for CoolDown {
         let mut temperature = self.max_temperature;
         loop {
             machine.set_temperature(temperature);
-            let _sensor = machine.run(rng, self.relax);
+            let sensor = machine.run(rng, self.relax);
+            if let Some(io) = output {
+                io.write(sensor.readings())?;
+            }
             let sensor = machine.run(rng, self.steps);
-            println!("{}", sensor);
+            println!("{}", &sensor);
+            if let Some(io) = output {
+                io.write(sensor.readings())?;
+            }
             temperature -= self.cool_rate;
             if temperature < self.min_temperature {
                 break;
@@ -240,7 +265,12 @@ impl Default for HysteresisLoop {
 }
 
 impl Program for HysteresisLoop {
-    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
+    fn run<R, I, H, S>(
+        &self,
+        rng: &mut R,
+        machine: &mut Machine<H, I, S>,
+        output: &mut Option<RawIO>,
+    ) -> Result<()>
     where
         R: Rng,
         I: Integrator<S>,
@@ -263,9 +293,15 @@ impl Program for HysteresisLoop {
         let mut field = 0.0;
         loop {
             machine.set_field(field);
-            let _sensor = machine.run(rng, self.relax);
+            let sensor = machine.run(rng, self.relax);
+            if let Some(io) = output {
+                io.write(sensor.readings())?;
+            }
             let sensor = machine.run(rng, self.steps);
-            println!("{}", sensor);
+            println!("{}", &sensor);
+            if let Some(io) = output {
+                io.write(sensor.readings())?;
+            }
             field += self.field_step;
             if field > self.max_field {
                 break;
@@ -273,9 +309,15 @@ impl Program for HysteresisLoop {
         }
         loop {
             machine.set_field(field);
-            let _sensor = machine.run(rng, self.relax);
+            let sensor = machine.run(rng, self.relax);
+            if let Some(io) = output {
+                io.write(sensor.readings())?;
+            }
             let sensor = machine.run(rng, self.steps);
-            println!("{}", sensor);
+            println!("{}", &sensor);
+            if let Some(io) = output {
+                io.write(sensor.readings())?;
+            }
             field -= self.field_step;
             if field < -self.max_field {
                 break;
@@ -283,9 +325,15 @@ impl Program for HysteresisLoop {
         }
         loop {
             machine.set_field(field);
-            let _sensor = machine.run(rng, self.relax);
+            let sensor = machine.run(rng, self.relax);
+            if let Some(io) = output {
+                io.write(sensor.readings())?;
+            }
             let sensor = machine.run(rng, self.steps);
-            println!("{}", sensor);
+            println!("{}", &sensor);
+            if let Some(io) = output {
+                io.write(sensor.readings())?;
+            }
             field += self.field_step;
             if field < self.max_field {
                 break;

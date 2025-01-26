@@ -30,7 +30,13 @@ where
     S: Spin,
 {
     /// Create a new machine with a given temperature, field, hamiltonian,
-    pub fn new(temperature: f64, field: f64, hamiltonian: H, integrator: I, state: State<S>) -> Self {
+    pub fn new(
+        temperature: f64,
+        field: f64,
+        hamiltonian: H,
+        integrator: I,
+        state: State<S>,
+    ) -> Self {
         Machine {
             temperature,
             field,
@@ -62,9 +68,9 @@ where
                 ZeemanEnergy::new(S::up(), self.field)
             );
             for _ in 0..steps {
-                self.state = self
-                    .integrator
-                    .step(rng, self.temperature, &hamiltonian, self.state.clone());
+                self.state =
+                    self.integrator
+                        .step(rng, self.temperature, &hamiltonian, self.state.clone());
                 sensor.observe(&hamiltonian, &self.state);
             }
             return sensor;
