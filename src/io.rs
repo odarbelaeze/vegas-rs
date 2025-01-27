@@ -1,4 +1,6 @@
-use crate::error::{IOError, Result};
+//! IO module for reading and writing data to and from files
+
+use crate::error::IOResult as Result;
 use crate::observables::Reading;
 
 use std::fs::File;
@@ -20,7 +22,7 @@ pub struct RawIO {
 
 impl RawIO {
     pub fn try_new<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let file = File::create(path).map_err(IOError::from)?;
+        let file = File::create(path)?;
         let schema = Arc::new(Schema::new(vec![
             Field::new("step", DataType::UInt64, false),
             Field::new("stage", DataType::UInt64, false),
@@ -31,8 +33,7 @@ impl RawIO {
         let properties = WriterProperties::builder()
             .set_compression(Compression::SNAPPY)
             .build();
-        let writer =
-            ArrowWriter::try_new(file, schema.clone(), Some(properties)).map_err(IOError::from)?;
+        let writer = ArrowWriter::try_new(file, schema.clone(), Some(properties))?;
         Ok(Self {
             schema: schema.clone(),
             writer,
@@ -70,16 +71,15 @@ impl RawIO {
                 Arc::new(Float64Array::from(energy)),
                 Arc::new(Float64Array::from(magnetization)),
             ],
-        )
-        .map_err(IOError::from)?;
+        )?;
 
-        self.writer.write(&batch).map_err(IOError::from)?;
+        self.writer.write(&batch)?;
 
         Ok(())
     }
 
     pub fn close(self) -> Result<()> {
-        self.writer.close().map_err(IOError::from)?;
+        self.writer.close()?;
         Ok(())
     }
 }

@@ -53,3 +53,9 @@ pub enum IOError {
 
 /// Result type for the vegas package
 pub type Result<T> = StdResult<T, VegasError>;
+
+/// Result type for program misconfiguration
+pub type ProgramResult<T> = StdResult<T, ProgramError>;
+
+/// Result type for IO operations
+pub type IOResult<T> = StdResult<T, IOError>;

@@ -4,7 +4,9 @@ use core::fmt;
 use std::fmt::{Display, Formatter};
 
 use crate::{
+    error::IOResult,
     hamiltonian::Hamiltonian,
+    io::RawIO,
     state::{Magnetization, Spin, State},
 };
 
@@ -124,8 +126,18 @@ impl Sensor {
         self.magnetization.binder_cumulant()
     }
 
-    pub fn readings(self) -> Vec<Reading> {
-        self.readings
+    /// Print the sensor averages to the screen.
+    pub fn print(&self) {
+        println!("{}", self);
+    }
+
+    /// Write the sensor readings to an output file.
+    pub fn write(self, raw: &mut Option<RawIO>) -> IOResult<()> {
+        if let Some(raw) = raw {
+            raw.write(self.readings)
+        } else {
+            Ok(())
+        }
     }
 }
 

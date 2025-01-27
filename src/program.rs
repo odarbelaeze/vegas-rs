@@ -81,9 +81,7 @@ impl Program for Relax {
         }
         machine.set_temperature(self.temperature);
         let sensor = machine.run(rng, self.steps);
-        if let Some(io) = output {
-            io.write(sensor.readings())?;
-        }
+        sensor.write(output)?;
         Ok(())
     }
 }
@@ -182,14 +180,10 @@ impl Program for CoolDown {
         loop {
             machine.set_temperature(temperature);
             let sensor = machine.run(rng, self.relax);
-            if let Some(io) = output {
-                io.write(sensor.readings())?;
-            }
+            sensor.write(output)?;
             let sensor = machine.run(rng, self.steps);
-            println!("{}", &sensor);
-            if let Some(io) = output {
-                io.write(sensor.readings())?;
-            }
+            sensor.print();
+            sensor.write(output)?;
             temperature -= self.cool_rate;
             if temperature < self.min_temperature {
                 break;
@@ -294,14 +288,10 @@ impl Program for HysteresisLoop {
         loop {
             machine.set_field(field);
             let sensor = machine.run(rng, self.relax);
-            if let Some(io) = output {
-                io.write(sensor.readings())?;
-            }
+            sensor.write(output)?;
             let sensor = machine.run(rng, self.steps);
-            println!("{}", &sensor);
-            if let Some(io) = output {
-                io.write(sensor.readings())?;
-            }
+            sensor.print();
+            sensor.write(output)?;
             field += self.field_step;
             if field > self.max_field {
                 break;
@@ -310,14 +300,10 @@ impl Program for HysteresisLoop {
         loop {
             machine.set_field(field);
             let sensor = machine.run(rng, self.relax);
-            if let Some(io) = output {
-                io.write(sensor.readings())?;
-            }
+            sensor.write(output)?;
             let sensor = machine.run(rng, self.steps);
-            println!("{}", &sensor);
-            if let Some(io) = output {
-                io.write(sensor.readings())?;
-            }
+            sensor.print();
+            sensor.write(output)?;
             field -= self.field_step;
             if field < -self.max_field {
                 break;
@@ -326,14 +312,10 @@ impl Program for HysteresisLoop {
         loop {
             machine.set_field(field);
             let sensor = machine.run(rng, self.relax);
-            if let Some(io) = output {
-                io.write(sensor.readings())?;
-            }
+            sensor.write(output)?;
             let sensor = machine.run(rng, self.steps);
-            println!("{}", &sensor);
-            if let Some(io) = output {
-                io.write(sensor.readings())?;
-            }
+            sensor.print();
+            sensor.write(output)?;
             field += self.field_step;
             if field < self.max_field {
                 break;
