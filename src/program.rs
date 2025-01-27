@@ -81,7 +81,7 @@ impl Program for Relax {
         }
         machine.set_temperature(self.temperature);
         let sensor = machine.run(rng, self.steps);
-        sensor.write(output)?;
+        sensor.write_relax(output)?;
         Ok(())
     }
 }
@@ -180,9 +180,8 @@ impl Program for CoolDown {
         loop {
             machine.set_temperature(temperature);
             let sensor = machine.run(rng, self.relax);
-            sensor.write(output)?;
+            sensor.write_relax(output)?;
             let sensor = machine.run(rng, self.steps);
-            sensor.print();
             sensor.write(output)?;
             temperature -= self.cool_rate;
             if temperature < self.min_temperature {
@@ -288,9 +287,8 @@ impl Program for HysteresisLoop {
         loop {
             machine.set_field(field);
             let sensor = machine.run(rng, self.relax);
-            sensor.write(output)?;
+            sensor.write_relax(output)?;
             let sensor = machine.run(rng, self.steps);
-            sensor.print();
             sensor.write(output)?;
             field += self.field_step;
             if field > self.max_field {
@@ -300,9 +298,8 @@ impl Program for HysteresisLoop {
         loop {
             machine.set_field(field);
             let sensor = machine.run(rng, self.relax);
-            sensor.write(output)?;
+            sensor.write_relax(output)?;
             let sensor = machine.run(rng, self.steps);
-            sensor.print();
             sensor.write(output)?;
             field -= self.field_step;
             if field < -self.max_field {
@@ -312,9 +309,8 @@ impl Program for HysteresisLoop {
         loop {
             machine.set_field(field);
             let sensor = machine.run(rng, self.relax);
-            sensor.write(output)?;
+            sensor.write_relax(output)?;
             let sensor = machine.run(rng, self.steps);
-            sensor.print();
             sensor.write(output)?;
             field += self.field_step;
             if field < self.max_field {

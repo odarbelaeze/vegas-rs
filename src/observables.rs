@@ -126,15 +126,20 @@ impl Sensor {
         self.magnetization.binder_cumulant()
     }
 
-    /// Print the sensor averages to the screen.
-    pub fn print(&self) {
-        println!("{}", self);
+    /// Write relax data to the output file.
+    pub fn write_relax(self, raw: &mut Option<RawIO>) -> IOResult<()> {
+        if let Some(raw) = raw {
+            raw.write(self.readings, true)
+        } else {
+            Ok(())
+        }
     }
 
     /// Write the sensor readings to an output file.
     pub fn write(self, raw: &mut Option<RawIO>) -> IOResult<()> {
+        println!("{}", self);
         if let Some(raw) = raw {
-            raw.write(self.readings)
+            raw.write(self.readings, false)
         } else {
             Ok(())
         }
