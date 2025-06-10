@@ -8,7 +8,7 @@ readme = "README.md"
 repository = "https://github.com/odarbelaeze/vegas-rs"
 documentation = "https://github.com/odarbelaeze/vegas-rs"
 license = "MIT"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 rand = { version = "0.9", features = ["small_rng"] }
