@@ -13,14 +13,14 @@ use arrow::datatypes::{DataType, Field, Schema};
 use arrow::record_batch::RecordBatch;
 use parquet::{arrow::ArrowWriter, basic::Compression, file::properties::WriterProperties};
 
-pub struct RawIO {
+pub struct ParquetIO {
     schema: Arc<Schema>,
     writer: ArrowWriter<File>,
     step: usize,
     stage: u64,
 }
 
-impl RawIO {
+impl ParquetIO {
     pub fn try_new<P: AsRef<Path>>(path: P) -> Result<Self> {
         let file = File::create(path)?;
         let schema = Arc::new(Schema::new(vec![

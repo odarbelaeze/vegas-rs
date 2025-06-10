@@ -7,7 +7,7 @@ use crate::{
     error::{ProgramError, Result},
     hamiltonian::Hamiltonian,
     integrator::Integrator,
-    io::RawIO,
+    io::ParquetIO,
     machine::Machine,
     state::Spin,
 };
@@ -19,7 +19,7 @@ pub trait Program {
         &self,
         rng: &mut R,
         machine: &mut Machine<H, I, S>,
-        output: &mut Option<RawIO>,
+        output: &mut Option<ParquetIO>,
     ) -> Result<()>
     where
         S: Spin,
@@ -65,7 +65,7 @@ impl Program for Relax {
         &self,
         rng: &mut R,
         machine: &mut Machine<H, I, S>,
-        output: &mut Option<RawIO>,
+        output: &mut Option<ParquetIO>,
     ) -> Result<()>
     where
         I: Integrator<S>,
@@ -156,7 +156,7 @@ impl Program for CoolDown {
         &self,
         rng: &mut R,
         machine: &mut Machine<H, I, S>,
-        output: &mut Option<RawIO>,
+        output: &mut Option<ParquetIO>,
     ) -> Result<()>
     where
         I: Integrator<S>,
@@ -262,7 +262,7 @@ impl Program for HysteresisLoop {
         &self,
         rng: &mut R,
         machine: &mut Machine<H, I, S>,
-        output: &mut Option<RawIO>,
+        output: &mut Option<ParquetIO>,
     ) -> Result<()>
     where
         R: Rng,

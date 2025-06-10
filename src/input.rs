@@ -11,7 +11,7 @@ use crate::{
     error::Result,
     hamiltonian::Exchange,
     integrator::MetropolisIntegrator,
-    io::RawIO,
+    io::ParquetIO,
     machine::Machine,
     program::{CoolDown, HysteresisLoop, Program, Relax},
     state::{HeisenbergSpin, IsingSpin, Spin, State},
@@ -216,7 +216,7 @@ impl Input {
         let hamiltonian = Exchange::from_lattice(&lattice);
         let mut raw_io = match &self.output {
             Some(output) => match &output.raw {
-                Some(path) => Some(RawIO::try_new(path)?),
+                Some(path) => Some(ParquetIO::try_new(path)?),
                 None => None,
             },
             None => None,
