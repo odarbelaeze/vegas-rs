@@ -1,12 +1,12 @@
 use rand::{
-    distributions::{Distribution, Uniform},
+    distr::{Distribution, Uniform},
     Rng,
 };
 
 /// Marsaglia's method for generating random points on a unit sphere.
 pub fn marsaglia<R: Rng>(rng: &mut R) -> (f64, f64, f64) {
     loop {
-        let distribution = Uniform::new(-1.0, 1.0);
+        let distribution = Uniform::new(-1.0, 1.0).expect("should always be able to create");
         let x1 = distribution.sample(rng);
         let x2 = distribution.sample(rng);
         if x1 * x1 + x2 * x2 >= 1f64 {

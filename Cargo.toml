@@ -11,11 +11,11 @@ license = "MIT"
 edition = "2021"
 
 [dependencies]
-rand = { version = "0.8.5", features = ["small_rng"] }
+rand = { version = "0.9", features = ["small_rng"] }
 vegas-lattice = "0.8"
 sprs = "0.11.1"
 clap = { version = "4.4.6", features = ["cargo", "derive"] }
-rand_pcg = "0.3.1"
+rand_pcg = "0.9.0"
 thiserror = "1.0.63"
 toml = { version = "0.8.19", features = ["preserve_order"] }
 serde = { version = "1.0.210", features = ["derive"] }
