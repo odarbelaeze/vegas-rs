@@ -5,7 +5,7 @@
 use std::iter::Sum;
 use std::ops::Add;
 
-use rand::distributions::{Distribution, Uniform};
+use rand::distr::{Distribution, Uniform};
 use rand::Rng;
 
 use super::util::marsaglia;
@@ -71,7 +71,7 @@ impl Spin for IsingSpin {
 
     /// Randomly pick up or down for an Ising spin.
     fn rand<T: Rng>(rng: &mut T) -> Self {
-        let range = Uniform::new(0f64, 1f64);
+        let range = Uniform::new(0f64, 1f64).expect("should always be able to create");
         let r = range.sample(rng);
         if r < 0.5f64 {
             IsingSpin::Up
@@ -346,7 +346,6 @@ mod tests {
     use super::IsingSpin;
     use super::Spin;
     use super::State;
-    use rand::thread_rng;
     use rand::SeedableRng;
     use rand_pcg::Pcg64;
 
@@ -358,7 +357,7 @@ mod tests {
     fn ising_spin_multiplies_correctly() {
         let up = IsingSpin::up();
         let down = IsingSpin::down();
-        let mut rng = Pcg64::from_entropy();
+        let mut rng = Pcg64::from_rng(&mut rand::rng());
         let rand = IsingSpin::rand(&mut rng);
         assert_real_close(up.dot(&up), 1.0);
         assert_real_close(up.dot(&down), -1.0);
@@ -380,7 +379,7 @@ mod tests {
     fn heisemberg_spin_multiplies_correctly() {
         let up = HeisenbergSpin::up();
         let down = HeisenbergSpin::down();
-        let rand = HeisenbergSpin::rand(&mut thread_rng());
+        let rand = HeisenbergSpin::rand(&mut rand::rng());
         assert_real_close(up.dot(&up), 1.0);
         assert_real_close(up.dot(&down), -1.0);
         assert_real_close(rand.dot(&rand), 1.0);
@@ -388,15 +387,15 @@ mod tests {
 
     #[test]
     fn heisenberg_spins_are_random() {
-        let HeisenbergSpin(a) = HeisenbergSpin::rand(&mut thread_rng());
-        let HeisenbergSpin(b) = HeisenbergSpin::rand(&mut thread_rng());
+        let HeisenbergSpin(a) = HeisenbergSpin::rand(&mut rand::rng());
+        let HeisenbergSpin(b) = HeisenbergSpin::rand(&mut rand::rng());
         assert!(a != b);
     }
 
     #[test]
     fn random_heisenberg_spins_are_unit() {
         for _ in 0..100 {
-            let HeisenbergSpin(a) = HeisenbergSpin::rand(&mut thread_rng());
+            let HeisenbergSpin(a) = HeisenbergSpin::rand(&mut rand::rng());
             let norm = a.iter().map(|i| i * i).fold(0f64, |s, i| s + i);
             assert_real_close(norm, 1.0);
         }

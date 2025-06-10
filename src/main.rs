@@ -24,7 +24,7 @@ fn bench(lattice: Lattice, model: Model) -> Result<()> {
     match model {
         Model::Ising => {
             let program = CoolDown::default().set_max_temperature(5.0);
-            let mut rng = Pcg64::from_entropy();
+            let mut rng = Pcg64::from_rng(&mut rand::rng());
             let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
             let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
@@ -32,7 +32,7 @@ fn bench(lattice: Lattice, model: Model) -> Result<()> {
         }
         Model::Heisenberg => {
             let program = CoolDown::default().set_max_temperature(2.5);
-            let mut rng = Pcg64::from_entropy();
+            let mut rng = Pcg64::from_rng(&mut rand::rng());
             let state = State::<HeisenbergSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
             let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
@@ -51,7 +51,7 @@ fn bench_ising(length: usize) -> Result<()> {
         .set_max_temperature(2.8)
         .set_min_temperature(1.8)
         .set_cool_rate(cool_rate);
-    let mut rng = Pcg64::from_entropy();
+    let mut rng = Pcg64::from_rng(&mut rand::rng());
     let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
     let integrator = MetropolisFlipIntegrator::new();
     let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
@@ -86,7 +86,7 @@ fn run_input(input: PathBuf) -> Result<()> {
         file.read_to_string(&mut data).map_err(IOError::from)?;
     };
     let input: Input = toml::from_str(&data)?;
-    let mut rng = Pcg64::from_entropy();
+    let mut rng = Pcg64::from_rng(&mut rand::rng());
     input.run(&mut rng)
 }
 

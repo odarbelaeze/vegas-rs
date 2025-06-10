@@ -1,6 +1,6 @@
 //! Integrators for Monte Carlo simulations.
 
-use rand::distributions::{Distribution, Uniform};
+use rand::distr::{Distribution, Uniform};
 use rand::Rng;
 
 use crate::{
@@ -45,7 +45,7 @@ impl<S: Spin> Integrator<S> for MetropolisIntegrator {
         hamiltonian: &H,
         mut state: State<S>,
     ) -> State<S> {
-        let distribution = Uniform::new(0, state.len());
+        let distribution = Uniform::new(0, state.len()).expect("should always be able to create");
         for _ in 0..state.len() {
             let site_index = distribution.sample(rng);
             let old_energy = hamiltonian.energy(&state, site_index);
@@ -56,7 +56,7 @@ impl<S: Spin> Integrator<S> for MetropolisIntegrator {
             if delta < 0.0 {
                 continue;
             }
-            if rng.gen::<f64>() < (-delta / temperature).exp() {
+            if rng.random::<f64>() < (-delta / temperature).exp() {
                 continue;
             }
             state.set_at(site_index, old_spin);
@@ -92,7 +92,7 @@ where
         hamiltonian: &H,
         mut state: State<S>,
     ) -> State<S> {
-        let sites = Uniform::new(0, state.len());
+        let sites = Uniform::new(0, state.len()).expect("should always be able to create");
         for _ in 0..state.len() {
             let site = sites.sample(rng);
             let old_energy = hamiltonian.energy(&state, site);
@@ -103,7 +103,7 @@ where
             if delta < 0.0 {
                 continue;
             }
-            if rng.gen::<f64>() < (-delta / temperature).exp() {
+            if rng.random::<f64>() < (-delta / temperature).exp() {
                 continue;
             }
             state.set_at(site, old_spin);
