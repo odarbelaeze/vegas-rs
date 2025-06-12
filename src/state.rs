@@ -5,8 +5,8 @@
 use std::iter::Sum;
 use std::ops::Add;
 
-use rand::distr::{Distribution, Uniform};
 use rand::Rng;
+use rand::distr::{Distribution, Uniform};
 
 use super::util::marsaglia;
 

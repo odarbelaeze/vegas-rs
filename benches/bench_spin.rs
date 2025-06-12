@@ -3,7 +3,7 @@ extern crate rand;
 extern crate test;
 extern crate vegas;
 
-use rand::{rngs::SmallRng, SeedableRng};
+use rand::{SeedableRng, rngs::SmallRng};
 use rand_pcg::Pcg64;
 use vegas::state::{HeisenbergSpin, IsingSpin, Spin, State};
 

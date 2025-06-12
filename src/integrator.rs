@@ -1,7 +1,7 @@
 //! Integrators for Monte Carlo simulations.
 
-use rand::distr::{Distribution, Uniform};
 use rand::Rng;
+use rand::distr::{Distribution, Uniform};
 
 use crate::{
     hamiltonian::Hamiltonian,

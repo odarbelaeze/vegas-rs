@@ -1,6 +1,6 @@
 use rand::{
-    distr::{Distribution, Uniform},
     Rng,
+    distr::{Distribution, Uniform},
 };
 
 /// Marsaglia's method for generating random points on a unit sphere.
