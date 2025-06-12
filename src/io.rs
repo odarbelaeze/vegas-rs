@@ -1,7 +1,7 @@
 //! IO module for reading and writing data to and from files
 
 use crate::error::IOResult as Result;
-use crate::observables::Reading;
+use crate::observables::Sensor;
 
 use std::fs::File;
 use std::iter::repeat;
@@ -43,29 +43,26 @@ impl ParquetIO {
         })
     }
 
-    pub fn write(&mut self, readings: Vec<Reading>, relax: bool) -> Result<()> {
+    pub fn write(&mut self, sensor: &Sensor, relax: bool) -> Result<()> {
         // Let's think that every step needs to be recorded here
-        let step: UInt64Array = (self.step..self.step + readings.len())
+        let step: UInt64Array = (self.step..self.step + sensor.len())
             .map(|i| i as u64)
             .collect();
-        self.step += readings.len();
+        self.step += sensor.len();
 
         // Each time we call write we enter a different stage of the run
-        let stage: UInt64Array = repeat(self.stage).take(readings.len()).collect();
+        let stage: UInt64Array = repeat(self.stage).take(sensor.len()).collect();
         self.stage += 1;
 
         // We should indicate if it's a relaxation step
-        let relax: BooleanArray = repeat(Some(relax)).take(readings.len()).collect();
+        let relax: BooleanArray = repeat(Some(relax)).take(sensor.len()).collect();
 
-        // Let's build our data arrays
-        let mut beta = Vec::<f64>::with_capacity(readings.len());
-        let mut energy = Vec::<f64>::with_capacity(readings.len());
-        let mut magnetization = Vec::<f64>::with_capacity(readings.len());
-        readings.iter().for_each(|reading| {
-            beta.push(reading.beta);
-            energy.push(reading.energy);
-            magnetization.push(reading.magnetization);
-        });
+        // Grab the beta value
+        let beta: Float64Array = repeat(sensor.beta()).take(sensor.len()).collect();
+
+        // Grab the measurement values
+        let energy: Float64Array = Float64Array::from(sensor.energy().clone());
+        let magnetization: Float64Array = Float64Array::from(sensor.magnetization().clone());
 
         let batch = RecordBatch::try_new(
             self.schema.clone(),
@@ -73,9 +70,9 @@ impl ParquetIO {
                 Arc::new(step),
                 Arc::new(stage),
                 Arc::new(relax),
-                Arc::new(Float64Array::from(beta)),
-                Arc::new(Float64Array::from(energy)),
-                Arc::new(Float64Array::from(magnetization)),
+                Arc::new(beta),
+                Arc::new(energy),
+                Arc::new(magnetization),
             ],
         )?;
 
