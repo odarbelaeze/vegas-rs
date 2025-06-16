@@ -26,6 +26,15 @@ pub trait Spin: Clone + Add<Self, Output = Self::MagnetizationType> {
 
     /// Dot product of two spins.
     fn dot(&self, other: &Self) -> f64;
+
+    /// Projection of the spin along the x-axis.
+    fn sx(&self) -> f64;
+
+    /// Projection of the spin along the y-axis.
+    fn sy(&self) -> f64;
+
+    /// Projection of the spin along the z-axis.
+    fn sz(&self) -> f64;
 }
 
 /// This trait represents a spin which can be flipped.
@@ -86,6 +95,25 @@ impl Spin for IsingSpin {
         match (self, other) {
             (&Up, &Up) | (&Down, &Down) => 1f64,
             _ => -1f64,
+        }
+    }
+
+    #[inline]
+    fn sx(&self) -> f64 {
+        0.0
+    }
+
+    #[inline]
+    fn sy(&self) -> f64 {
+        0.0
+    }
+
+    #[inline]
+    fn sz(&self) -> f64 {
+        use self::IsingSpin::{Down, Up};
+        match self {
+            Up => 1f64,
+            Down => -1f64,
         }
     }
 }
@@ -216,6 +244,21 @@ impl Spin for HeisenbergSpin {
             .zip(_other.iter())
             .map(|(a, b)| a * b)
             .fold(0f64, |sum, i| sum + i)
+    }
+
+    #[inline]
+    fn sx(&self) -> f64 {
+        self.0[0]
+    }
+
+    #[inline]
+    fn sy(&self) -> f64 {
+        self.0[1]
+    }
+
+    #[inline]
+    fn sz(&self) -> f64 {
+        self.0[2]
     }
 }
 

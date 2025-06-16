@@ -6,7 +6,7 @@ use std::fmt::{Display, Formatter};
 use crate::{
     error::IOResult,
     hamiltonian::Hamiltonian,
-    io::ParquetIO,
+    io::ObservableParquetIO,
     state::{Magnetization, Spin, State},
 };
 
@@ -146,7 +146,7 @@ impl Sensor {
     }
 
     /// Write relax data to the output file.
-    pub fn write_relax(&self, raw: &mut Option<ParquetIO>) -> IOResult<()> {
+    pub fn write_relax(&self, raw: &mut Option<ObservableParquetIO>) -> IOResult<()> {
         if let Some(raw) = raw {
             raw.write(self, true)
         } else {
@@ -155,7 +155,7 @@ impl Sensor {
     }
 
     /// Write the sensor readings to an output file.
-    pub fn write(&self, raw: &mut Option<ParquetIO>) -> IOResult<()> {
+    pub fn write(&self, raw: &mut Option<ObservableParquetIO>) -> IOResult<()> {
         println!("{}", self);
         if let Some(raw) = raw {
             raw.write(self, false)
