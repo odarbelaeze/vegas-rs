@@ -3,6 +3,7 @@
 //! Energy components are parts of the Hamiltonian that can be aggregated.
 
 use crate::state::{Spin, State};
+use crate::thermostat::Thermostat;
 use sprs::{CsMat, TriMat};
 use std::iter::Iterator;
 use std::marker::PhantomData;
@@ -19,13 +20,13 @@ pub trait Hamiltonian<S: Spin>: Clone {
     ///
     /// This function will panic of the index is greater than the size
     /// of the state vector (business as usual)
-    fn energy(&self, state: &State<S>, index: usize) -> f64;
+    fn energy(&self, thermostat: &Thermostat, state: &State<S>, index: usize) -> f64;
 
     /// Compute the total energy of a state.
-    fn total_energy(&self, state: &State<S>) -> f64 {
+    fn total_energy(&self, thermostat: &Thermostat, state: &State<S>) -> f64 {
         (0..state.len())
-            .map(|i| self.energy(state, i))
-            .fold(0f64, |s, i| s + i)
+            .map(|i| self.energy(thermostat, state, i))
+            .sum()
     }
 }
 
@@ -43,7 +44,7 @@ impl Gauge {
 }
 
 impl<T: Spin> Hamiltonian<T> for Gauge {
-    fn energy(&self, state: &State<T>, index: usize) -> f64 {
+    fn energy(&self, _thermostat: &Thermostat, state: &State<T>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         self.value
     }
@@ -75,13 +76,13 @@ impl<S> Hamiltonian<S> for UniaxialAnisotropy<S>
 where
     S: Spin,
 {
-    fn energy(&self, state: &State<S>, index: usize) -> f64 {
+    fn energy(&self, _thermostat: &Thermostat, state: &State<S>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         let s = state.at(index);
         s.dot(&self.reference).powi(2) * self.strength
     }
 
-    fn total_energy(&self, state: &State<S>) -> f64 {
+    fn total_energy(&self, _thermostat: &Thermostat, state: &State<S>) -> f64 {
         state
             .spins()
             .iter()
@@ -97,18 +98,14 @@ where
     S: Spin,
 {
     reference: S,
-    strength: f64,
 }
 
 impl<T> ZeemanEnergy<T>
 where
     T: Spin,
 {
-    pub fn new(s: T, h: f64) -> Self {
-        Self {
-            reference: s,
-            strength: h,
-        }
+    pub fn new(s: T) -> Self {
+        Self { reference: s }
     }
 }
 
@@ -116,18 +113,19 @@ impl<S> Hamiltonian<S> for ZeemanEnergy<S>
 where
     S: Spin,
 {
-    fn energy(&self, state: &State<S>, index: usize) -> f64 {
+    fn energy(&self, thermostat: &Thermostat, state: &State<S>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         let s = state.at(index);
-        s.dot(&self.reference) * self.strength
+        s.dot(&self.reference) * thermostat.field()
     }
 
-    fn total_energy(&self, state: &State<S>) -> f64 {
-        -state
-            .spins()
-            .iter()
-            .map(|s| s.dot(&self.reference))
-            .sum::<f64>()
+    fn total_energy(&self, thermostat: &Thermostat, state: &State<S>) -> f64 {
+        -thermostat.field()
+            * state
+                .spins()
+                .iter()
+                .map(|s| s.dot(&self.reference))
+                .sum::<f64>()
     }
 }
 
@@ -160,7 +158,7 @@ impl<S> Hamiltonian<S> for Exchange
 where
     S: Spin,
 {
-    fn energy(&self, state: &State<S>, index: usize) -> f64 {
+    fn energy(&self, _thermostat: &Thermostat, state: &State<S>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         let site = state.at(index);
         if let Some(row) = self.exchange.outer_view(index) {
@@ -174,9 +172,9 @@ where
         }
     }
 
-    fn total_energy(&self, state: &State<S>) -> f64 {
+    fn total_energy(&self, thermostat: &Thermostat, state: &State<S>) -> f64 {
         (0..state.len())
-            .map(|i| self.energy(state, i))
+            .map(|i| self.energy(thermostat, state, i))
             .fold(0f64, |s, i| s + i)
             / 2.0
     }
@@ -219,8 +217,8 @@ where
     U: Hamiltonian<S>,
     V: Hamiltonian<S>,
 {
-    fn energy(&self, state: &State<S>, index: usize) -> f64 {
-        self.a.energy(state, index) + self.b.energy(state, index)
+    fn energy(&self, thermostat: &Thermostat, state: &State<S>, index: usize) -> f64 {
+        self.a.energy(thermostat, state, index) + self.b.energy(thermostat, state, index)
     }
 }
 
@@ -261,13 +259,16 @@ macro_rules! hamiltonian {
 #[cfg(test)]
 mod tests {
     use super::{Compound, Gauge, Hamiltonian, UniaxialAnisotropy, ZeemanEnergy};
-    use crate::state::{HeisenbergSpin, Spin, State};
+    use crate::{
+        state::{HeisenbergSpin, Spin, State},
+        thermostat::Thermostat,
+    };
 
     #[test]
     fn test_gauge_energy() {
         let ups = State::<HeisenbergSpin>::up_with_size(10);
         let gauge = Gauge::new(10.0);
-        assert!(gauge.total_energy(&ups) - 100.0 < 1e-12)
+        assert!(gauge.total_energy(&Thermostat::near_zero(), &ups) - 100.0 < 1e-12)
     }
 
     #[test]
@@ -275,17 +276,17 @@ mod tests {
         let ups = State::<HeisenbergSpin>::up_with_size(10);
         let downs = State::<HeisenbergSpin>::down_with_size(10);
         let anisotropy = UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0);
-        assert!(anisotropy.total_energy(&ups) - 100.0 < 1e-12);
-        assert!(anisotropy.total_energy(&downs) - 100.0 < 1e-12)
+        assert!(anisotropy.total_energy(&Thermostat::near_zero(), &ups) - 100.0 < 1e-12);
+        assert!(anisotropy.total_energy(&Thermostat::near_zero(), &downs) - 100.0 < 1e-12)
     }
 
     #[test]
     fn test_zeeman_energy() {
         let ups = State::<HeisenbergSpin>::up_with_size(10);
         let downs = State::<HeisenbergSpin>::down_with_size(10);
-        let anisotropy = ZeemanEnergy::new(HeisenbergSpin::up(), 1.0);
-        assert!(anisotropy.total_energy(&ups) + 10.0 < 1e-12);
-        assert!(anisotropy.total_energy(&downs) - 10.0 < 1e-12)
+        let anisotropy = ZeemanEnergy::new(HeisenbergSpin::up());
+        assert!(anisotropy.total_energy(&Thermostat::new(0.0, 1.0), &ups) + 10.0 < 1e-12);
+        assert!(anisotropy.total_energy(&Thermostat::new(0.0, 1.0), &downs) - 10.0 < 1e-12)
     }
 
     #[test]
@@ -294,7 +295,7 @@ mod tests {
         let gauge = Gauge::new(10.0);
         let anisotropy = UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0);
         let compound = Compound::new(gauge, anisotropy);
-        assert!(compound.total_energy(&ups) - 200.0 < 1e-12);
+        assert!(compound.total_energy(&Thermostat::near_zero(), &ups) - 200.0 < 1e-12);
     }
 
     #[test]
@@ -304,6 +305,6 @@ mod tests {
             UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0),
             Gauge::new(1.0)
         );
-        assert!(hamiltonian.total_energy(&state) - 200.0 < 1e-12);
+        assert!(hamiltonian.total_energy(&Thermostat::near_zero(), &state) - 200.0 < 1e-12);
     }
 }

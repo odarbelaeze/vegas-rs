@@ -49,10 +49,12 @@ pub mod error;
 #[macro_use]
 pub mod hamiltonian;
 pub mod input;
+pub mod instrument;
 pub mod integrator;
 pub mod io;
 pub mod machine;
 pub mod observables;
 pub mod program;
 pub mod state;
+pub mod thermostat;
 mod util;

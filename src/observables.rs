@@ -8,6 +8,7 @@ use crate::{
     hamiltonian::Hamiltonian,
     io::ObservableParquetIO,
     state::{Magnetization, Spin, State},
+    thermostat::Thermostat,
 };
 
 /// An accumulator helps to compute statistical properties of a stream of measurements.
@@ -82,12 +83,12 @@ impl Sensor {
     }
 
     /// Observe the state of the system.
-    pub fn observe<H, S>(&mut self, hamiltonian: &H, state: &State<S>)
+    pub fn observe<H, S>(&mut self, thermostat: &Thermostat, hamiltonian: &H, state: &State<S>)
     where
         H: Hamiltonian<S>,
         S: Spin,
     {
-        let energy = hamiltonian.total_energy(state) / state.len() as f64;
+        let energy = hamiltonian.total_energy(thermostat, state) / state.len() as f64;
         let magnetization = state.magnetization().magnitude() / state.len() as f64;
         self.energy.push(energy);
         self.magnetization.push(magnetization);

@@ -3,6 +3,7 @@
 use rand::Rng;
 use rand::distr::{Distribution, Uniform};
 
+use crate::thermostat::Thermostat;
 use crate::{
     hamiltonian::Hamiltonian,
     state::{Flip, Spin, State},
@@ -15,7 +16,7 @@ pub trait Integrator<S: Spin> {
     fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
         rng: &mut R,
-        temperature: f64,
+        thermostat: &Thermostat,
         hamiltonian: &H,
         state: State<S>,
     ) -> State<S>;
@@ -41,22 +42,22 @@ impl<S: Spin> Integrator<S> for MetropolisIntegrator {
     fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
         rng: &mut R,
-        temperature: f64,
+        thermostat: &Thermostat,
         hamiltonian: &H,
         mut state: State<S>,
     ) -> State<S> {
         let distribution = Uniform::new(0, state.len()).expect("should always be able to create");
         for _ in 0..state.len() {
             let site_index = distribution.sample(rng);
-            let old_energy = hamiltonian.energy(&state, site_index);
+            let old_energy = hamiltonian.energy(thermostat, &state, site_index);
             let old_spin = state.at(site_index).clone();
             state.set_at(site_index, Spin::rand(rng));
-            let new_energy = hamiltonian.energy(&state, site_index);
+            let new_energy = hamiltonian.energy(thermostat, &state, site_index);
             let delta = new_energy - old_energy;
             if delta < 0.0 {
                 continue;
             }
-            if rng.random::<f64>() < (-delta / temperature).exp() {
+            if rng.random::<f64>() < (-delta / thermostat.temperature()).exp() {
                 continue;
             }
             state.set_at(site_index, old_spin);
@@ -88,22 +89,22 @@ where
     fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
         rng: &mut R,
-        temperature: f64,
+        thermostat: &Thermostat,
         hamiltonian: &H,
         mut state: State<S>,
     ) -> State<S> {
         let sites = Uniform::new(0, state.len()).expect("should always be able to create");
         for _ in 0..state.len() {
             let site = sites.sample(rng);
-            let old_energy = hamiltonian.energy(&state, site);
+            let old_energy = hamiltonian.energy(thermostat, &state, site);
             let old_spin = state.at(site).clone();
             state.set_at(site, old_spin.flip());
-            let new_energy = hamiltonian.energy(&state, site);
+            let new_energy = hamiltonian.energy(thermostat, &state, site);
             let delta = new_energy - old_energy;
             if delta < 0.0 {
                 continue;
             }
-            if rng.random::<f64>() < (-delta / temperature).exp() {
+            if rng.random::<f64>() < (-delta / thermostat.temperature()).exp() {
                 continue;
             }
             state.set_at(site, old_spin);

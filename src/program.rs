@@ -7,7 +7,6 @@ use crate::{
     error::{ProgramError, Result},
     hamiltonian::Hamiltonian,
     integrator::Integrator,
-    io::ObservableParquetIO,
     machine::Machine,
     state::Spin,
 };
@@ -15,12 +14,7 @@ use crate::{
 /// A program is a sequence of steps that can be run on a system.
 pub trait Program {
     /// Run the program on a system returning the last state.
-    fn run<R, I, H, S>(
-        &self,
-        rng: &mut R,
-        machine: &mut Machine<H, I, S>,
-        output: &mut Option<ObservableParquetIO>,
-    ) -> Result<()>
+    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
     where
         S: Spin,
         H: Hamiltonian<S>,
@@ -61,12 +55,7 @@ impl Default for Relax {
 }
 
 impl Program for Relax {
-    fn run<R, I, H, S>(
-        &self,
-        rng: &mut R,
-        machine: &mut Machine<H, I, S>,
-        output: &mut Option<ObservableParquetIO>,
-    ) -> Result<()>
+    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
     where
         I: Integrator<S>,
         H: Hamiltonian<S>,
@@ -79,9 +68,8 @@ impl Program for Relax {
         if self.temperature < f64::EPSILON {
             return Err(ProgramError::ZeroTemperature.into());
         }
-        machine.set_temperature(self.temperature);
-        let sensor = machine.run(rng, self.steps);
-        sensor.write_relax(output)?;
+        machine.set_thermostat(machine.thermostat().with_temperature(self.temperature));
+        machine.relax_for(rng, self.steps);
         Ok(())
     }
 }
@@ -152,12 +140,7 @@ impl Default for CoolDown {
 }
 
 impl Program for CoolDown {
-    fn run<R, I, H, S>(
-        &self,
-        rng: &mut R,
-        machine: &mut Machine<H, I, S>,
-        output: &mut Option<ObservableParquetIO>,
-    ) -> Result<()>
+    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
     where
         I: Integrator<S>,
         H: Hamiltonian<S>,
@@ -178,11 +161,9 @@ impl Program for CoolDown {
         }
         let mut temperature = self.max_temperature;
         loop {
-            machine.set_temperature(temperature);
-            let sensor = machine.run(rng, self.relax);
-            sensor.write_relax(output)?;
-            let sensor = machine.run(rng, self.steps);
-            sensor.write(output)?;
+            machine.set_thermostat(machine.thermostat().with_temperature(temperature));
+            machine.relax_for(rng, self.relax);
+            machine.measure_for(rng, self.steps);
             temperature -= self.cool_rate;
             if temperature < self.min_temperature {
                 break;
@@ -258,12 +239,7 @@ impl Default for HysteresisLoop {
 }
 
 impl Program for HysteresisLoop {
-    fn run<R, I, H, S>(
-        &self,
-        rng: &mut R,
-        machine: &mut Machine<H, I, S>,
-        output: &mut Option<ObservableParquetIO>,
-    ) -> Result<()>
+    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
     where
         R: Rng,
         I: Integrator<S>,
@@ -282,36 +258,30 @@ impl Program for HysteresisLoop {
         if self.field_step < f64::EPSILON {
             return Err(ProgramError::ZeroFieldStep.into());
         }
-        machine.set_temperature(self.temperature);
+        machine.set_thermostat(machine.thermostat().with_temperature(self.temperature));
         let mut field = 0.0;
         loop {
-            machine.set_field(field);
-            let sensor = machine.run(rng, self.relax);
-            sensor.write_relax(output)?;
-            let sensor = machine.run(rng, self.steps);
-            sensor.write(output)?;
+            machine.set_thermostat(machine.thermostat().with_field(field));
+            machine.relax_for(rng, self.relax);
+            machine.measure_for(rng, self.steps);
             field += self.field_step;
             if field > self.max_field {
                 break;
             }
         }
         loop {
-            machine.set_field(field);
-            let sensor = machine.run(rng, self.relax);
-            sensor.write_relax(output)?;
-            let sensor = machine.run(rng, self.steps);
-            sensor.write(output)?;
+            machine.set_thermostat(machine.thermostat().with_field(field));
+            machine.relax_for(rng, self.relax);
+            machine.measure_for(rng, self.steps);
             field -= self.field_step;
             if field < -self.max_field {
                 break;
             }
         }
         loop {
-            machine.set_field(field);
-            let sensor = machine.run(rng, self.relax);
-            sensor.write_relax(output)?;
-            let sensor = machine.run(rng, self.steps);
-            sensor.write(output)?;
+            machine.set_thermostat(machine.thermostat().with_field(field));
+            machine.relax_for(rng, self.relax);
+            machine.measure_for(rng, self.steps);
             field += self.field_step;
             if field < self.max_field {
                 break;

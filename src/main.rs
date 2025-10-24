@@ -17,6 +17,7 @@ use vegas::{
     machine::Machine,
     program::{CoolDown, Program, Relax},
     state::{HeisenbergSpin, IsingSpin, State},
+    thermostat::Thermostat,
 };
 
 fn bench(lattice: Lattice, model: Model) -> Result<()> {
@@ -27,16 +28,18 @@ fn bench(lattice: Lattice, model: Model) -> Result<()> {
             let mut rng = Pcg64::from_rng(&mut rand::rng());
             let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
-            let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
-            program.run(&mut rng, &mut machine, &mut None)
+            let thermostat = Thermostat::new(2.8, 0.0);
+            let mut machine = Machine::new(thermostat, hamiltonian, integrator, Vec::new(), state);
+            program.run(&mut rng, &mut machine)
         }
         Model::Heisenberg => {
             let program = CoolDown::default().set_max_temperature(2.5);
             let mut rng = Pcg64::from_rng(&mut rand::rng());
             let state = State::<HeisenbergSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
-            let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
-            program.run(&mut rng, &mut machine, &mut None)
+            let thermostat = Thermostat::new(2.8, 0.0);
+            let mut machine = Machine::new(thermostat, hamiltonian, integrator, Vec::new(), state);
+            program.run(&mut rng, &mut machine)
         }
     }
 }
@@ -54,9 +57,10 @@ fn bench_ising(length: usize) -> Result<()> {
     let mut rng = Pcg64::from_rng(&mut rand::rng());
     let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
     let integrator = MetropolisFlipIntegrator::new();
-    let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
-    relax.run(&mut rng, &mut machine, &mut None)?;
-    curie.run(&mut rng, &mut machine, &mut None)
+    let thermostat = Thermostat::new(2.8, 0.0);
+    let mut machine = Machine::new(thermostat, hamiltonian, integrator, Vec::new(), state);
+    relax.run(&mut rng, &mut machine)?;
+    curie.run(&mut rng, &mut machine)
 }
 
 fn bench_model(model: Model, length: usize) -> Result<()> {

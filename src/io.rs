@@ -5,7 +5,7 @@ use crate::observables::Sensor;
 use crate::state::{Spin, State};
 
 use std::fs::File;
-use std::iter::repeat;
+use std::iter::repeat_n;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -52,14 +52,14 @@ impl ObservableParquetIO {
         self.step += sensor.len();
 
         // Each time we call write we enter a different stage of the run
-        let stage: UInt64Array = repeat(self.stage).take(sensor.len()).collect();
+        let stage: UInt64Array = repeat_n(self.stage, sensor.len()).collect();
         self.stage += 1;
 
         // We should indicate if it's a relaxation step
-        let relax: BooleanArray = repeat(Some(relax)).take(sensor.len()).collect();
+        let relax: BooleanArray = repeat_n(Some(relax), sensor.len()).collect();
 
         // Grab the beta value
-        let beta: Float64Array = repeat(sensor.beta()).take(sensor.len()).collect();
+        let beta: Float64Array = repeat_n(sensor.beta(), sensor.len()).collect();
 
         // Grab the measurement values
         let energy: Float64Array = Float64Array::from(sensor.energy().clone());
@@ -92,11 +92,11 @@ pub struct StateParquetIO {
     schema: Arc<Schema>,
     writer: ArrowWriter<File>,
     step: usize,
-    frequency: u64,
+    frequency: usize,
 }
 
 impl StateParquetIO {
-    pub fn try_new<P: AsRef<Path>>(path: P, frequency: u64) -> Result<Self> {
+    pub fn try_new<P: AsRef<Path>>(path: P, frequency: usize) -> Result<Self> {
         let file = File::create(path)?;
         let schema = Arc::new(Schema::new(vec![
             Field::new("step", DataType::UInt64, false),
@@ -118,15 +118,11 @@ impl StateParquetIO {
     }
 
     pub fn write<T: Spin>(&mut self, state: &State<T>) -> Result<()> {
-        if (self.step as u64 % self.frequency) != 0 {
+        if self.step.is_multiple_of(self.frequency) {
             self.step += 1;
             return Ok(());
         }
-        let step = UInt64Array::from(
-            repeat(self.step as u64)
-                .take(state.len())
-                .collect::<Vec<_>>(),
-        );
+        let step = UInt64Array::from(repeat_n(self.step as u64, state.len()).collect::<Vec<_>>());
         let id = UInt64Array::from((0..state.len()).map(|i| i as u64).collect::<Vec<_>>());
         let sx = Float64Array::from(state.spins().iter().map(|s| s.sx()).collect::<Vec<_>>());
         let sy = Float64Array::from(state.spins().iter().map(|s| s.sy()).collect::<Vec<_>>());

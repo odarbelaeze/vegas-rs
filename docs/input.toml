@@ -28,3 +28,7 @@ steps = 20000
 
 [output]
 raw = "./output.parquet"
+
+[output.state]
+path = "./state.parquet"
+frequency = 1000

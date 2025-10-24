@@ -3,10 +3,11 @@
 use rand::Rng;
 
 use crate::{
-    hamiltonian::{Hamiltonian, ZeemanEnergy},
+    hamiltonian::Hamiltonian,
+    instrument::Instrument,
     integrator::Integrator,
-    observables::Sensor,
     state::{Spin, State},
+    thermostat::Thermostat,
 };
 
 /// A box containing the sample with a given temperature and field.
@@ -16,10 +17,10 @@ where
     I: Integrator<S>,
     S: Spin,
 {
-    temperature: f64,
-    field: f64,
+    thermostat: Thermostat,
     hamiltonian: H,
     integrator: I,
+    instruments: Vec<Box<dyn Instrument<H, S>>>,
     state: State<S>,
 }
 
@@ -31,60 +32,62 @@ where
 {
     /// Create a new machine with a given temperature, field, hamiltonian,
     pub fn new(
-        temperature: f64,
-        field: f64,
+        thermostat: Thermostat,
         hamiltonian: H,
         integrator: I,
+        instruments: Vec<Box<dyn Instrument<H, S>>>,
         state: State<S>,
     ) -> Self {
         Machine {
-            temperature,
-            field,
+            thermostat,
             hamiltonian,
             integrator,
+            instruments,
             state,
         }
     }
 
-    /// Set the temperature of the machine.
-    pub fn set_temperature(&mut self, temperature: f64) {
-        if temperature < f64::EPSILON {
-            return;
-        }
-        self.temperature = temperature;
+    /// Get the current thermostat of the machine.
+    pub fn thermostat(&self) -> &Thermostat {
+        &self.thermostat
     }
 
-    /// Set the field of the machine.
-    pub fn set_field(&mut self, field: f64) {
-        self.field = field;
+    /// Set the thermostat of the machine.
+    pub fn set_thermostat(&mut self, thermostat: Thermostat) {
+        self.thermostat = thermostat;
     }
 
     /// Run and observe the machine for a given number of steps.
-    pub fn run<R: Rng>(&mut self, rng: &mut R, steps: usize) -> Sensor {
-        let mut sensor = Sensor::new(self.temperature);
-        if self.field != 0.0 {
-            let hamiltonian = hamiltonian!(
-                self.hamiltonian.clone(),
-                ZeemanEnergy::new(S::up(), self.field)
-            );
-            for _ in 0..steps {
-                self.state =
-                    self.integrator
-                        .step(rng, self.temperature, &hamiltonian, self.state.clone());
-                sensor.observe(&hamiltonian, &self.state);
-            }
-            return sensor;
-        }
-        for _ in 0..steps {
+    fn run<R: Rng>(&mut self, rng: &mut R, steps: usize) {
+        for step in 0..steps {
             self.state =
                 self.integrator
-                    .step(rng, self.temperature, &self.hamiltonian, self.state.clone());
-            sensor.observe(&self.hamiltonian, &self.state);
+                    .step(rng, &self.thermostat, &self.hamiltonian, self.state.clone());
+            for instrument in self.instruments.iter_mut() {
+                instrument.after_step(step, &self.state);
+            }
         }
-        sensor
     }
 
-    pub fn state(&self) -> &State<S> {
-        &self.state
+    /// Relax the machine for a given number of steps.
+    pub fn relax_for<R: Rng>(&mut self, rng: &mut R, relax_steps: usize) {
+        for instrument in self.instruments.iter_mut() {
+            instrument.before_relax(&self.thermostat, &self.hamiltonian, &self.state);
+        }
+        self.run(rng, relax_steps);
+        for instrument in self.instruments.iter_mut() {
+            instrument.on_relax_end(&self.state);
+        }
+    }
+
+    /// Measure the machine for a given number of steps.
+    pub fn measure_for<R: Rng>(&mut self, rng: &mut R, measure_steps: usize) {
+        for instrument in self.instruments.iter_mut() {
+            instrument.on_measure_start(&self.thermostat, &self.hamiltonian, &self.state);
+        }
+        self.run(rng, measure_steps);
+        for instrument in self.instruments.iter_mut() {
+            instrument.on_measure_end(&self.state);
+        }
     }
 }

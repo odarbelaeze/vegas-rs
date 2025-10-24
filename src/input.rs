@@ -9,12 +9,13 @@ use vegas_lattice::Lattice;
 
 use crate::{
     error::Result,
-    hamiltonian::Exchange,
+    hamiltonian::{Exchange, ZeemanEnergy},
     integrator::MetropolisIntegrator,
     io::ObservableParquetIO,
     machine::Machine,
     program::{CoolDown, HysteresisLoop, Program, Relax},
     state::{HeisenbergSpin, IsingSpin, Spin, State},
+    thermostat::Thermostat,
 };
 
 #[derive(Debug, Default, Clone, ValueEnum, Serialize, Deserialize)]
@@ -97,17 +98,32 @@ pub struct Sample {
     pub pbc: PeriodicBoundaryConditions,
 }
 
+/// State output for a simulation.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct StateOutput {
+    /// Write the states to a parquet file
+    pub path: PathBuf,
+    /// Frequency of writing states
+    pub frequency: u64,
+}
+
 /// Output for a generic simulation.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Output {
     /// Write the raw data into the given file
     pub raw: Option<PathBuf>,
+    /// Write states to a parquet file
+    pub state: Option<StateOutput>,
 }
 
 impl Default for Output {
     fn default() -> Self {
         Self {
             raw: Some("./output.parquet".into()),
+            state: Some(StateOutput {
+                path: "./state.parquet".into(),
+                frequency: 1000,
+            }),
         }
     }
 }
@@ -213,8 +229,9 @@ impl Input {
     fn run_with_spin<T: Spin, R: Rng>(&self, rng: &mut R) -> Result<()> {
         let lattice = self.lattice();
         let integrator = MetropolisIntegrator::new();
-        let hamiltonian = Exchange::from_lattice(&lattice);
-        let mut raw_io = match &self.output {
+        let hamiltonian =
+            hamiltonian!(Exchange::from_lattice(&lattice), ZeemanEnergy::new(T::up()));
+        let raw_io = match &self.output {
             Some(output) => match &output.raw {
                 Some(path) => Some(ObservableParquetIO::try_new(path)?),
                 None => None,
@@ -222,22 +239,22 @@ impl Input {
             None => None,
         };
         let mut machine = Machine::new(
-            2.8,
-            0.0,
+            Thermostat::new(2.8, 0.0),
             hamiltonian,
             integrator,
+            Vec::new(),
             State::<T>::rand_with_size(rng, lattice.sites().len()),
         );
         for program in self.steps.iter() {
             match program {
                 Step::Relax(relax) => {
-                    relax.run(rng, &mut machine, &mut raw_io)?;
+                    relax.run(rng, &mut machine)?;
                 }
                 Step::CoolDown(curie) => {
-                    curie.run(rng, &mut machine, &mut raw_io)?;
+                    curie.run(rng, &mut machine)?;
                 }
                 Step::Hysteresis(hysteresis) => {
-                    hysteresis.run(rng, &mut machine, &mut raw_io)?;
+                    hysteresis.run(rng, &mut machine)?;
                 }
             }
         }
