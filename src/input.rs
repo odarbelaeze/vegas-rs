@@ -1,6 +1,6 @@
 //! Input for a generic simulation.
 
-use std::path::PathBuf;
+use std::{io::stdout, path::PathBuf};
 
 use clap::ValueEnum;
 use rand::Rng;
@@ -10,6 +10,7 @@ use vegas_lattice::Lattice;
 use crate::{
     error::Result,
     hamiltonian::{Exchange, ZeemanEnergy},
+    instrument::{Instrument, StatSensor},
     integrator::MetropolisIntegrator,
     io::ObservableParquetIO,
     machine::Machine,
@@ -226,7 +227,7 @@ impl Default for InputBuilder {
 }
 
 impl Input {
-    fn run_with_spin<T: Spin, R: Rng>(&self, rng: &mut R) -> Result<()> {
+    fn run_with_spin<T: Spin + 'static, R: Rng>(&self, rng: &mut R) -> Result<()> {
         let lattice = self.lattice();
         let integrator = MetropolisIntegrator::new();
         let hamiltonian =
@@ -238,11 +239,13 @@ impl Input {
             },
             None => None,
         };
+        let instruments: Vec<Box<dyn Instrument<_, _>>> =
+            vec![Box::new(StatSensor::<_, T>::new(Box::new(stdout())))];
         let mut machine = Machine::new(
             Thermostat::new(2.8, 0.0),
             hamiltonian,
             integrator,
-            Vec::new(),
+            instruments,
             State::<T>::rand_with_size(rng, lattice.sites().len()),
         );
         for program in self.steps.iter() {
