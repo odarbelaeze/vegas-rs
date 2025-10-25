@@ -6,7 +6,7 @@ use crate::{
     accumulator::Accumulator,
     error::{IOResult, InstrumentResult},
     hamiltonian::Hamiltonian,
-    io::ObservableParquetIO,
+    io::{ObservableParquetIO, StateParquetIO},
     state::{Magnetization, Spin, State},
     thermostat::Thermostat,
 };
@@ -48,7 +48,9 @@ where
     }
 
     /// Hook called after each integration step.
-    fn after_step(&mut self, _state: &State<S>) {}
+    fn after_step(&mut self, _state: &State<S>) -> InstrumentResult<()> {
+        Ok(())
+    }
 }
 
 /// An instrument that writes "statistics" to a given file.
@@ -119,13 +121,14 @@ where
         Ok(())
     }
 
-    fn after_step(&mut self, state: &State<S>) {
+    fn after_step(&mut self, state: &State<S>) -> InstrumentResult<()> {
         if let (Some(thermostat), Some(hamiltonian)) = (&self.thermostat, &self.hamiltonian) {
             let energy = hamiltonian.total_energy(thermostat, state) / state.len() as f64;
             let magnetization = state.magnetization().magnitude() / state.len() as f64;
             self.energy_acc.collect(energy);
             self.magnetization_acc.collect(magnetization);
         }
+        Ok(())
     }
 }
 
@@ -181,7 +184,7 @@ where
     fn on_relax_end(&mut self) -> InstrumentResult<()> {
         if let Some(thermostat) = &self.thermostat {
             self.io
-                .write(&thermostat, &self.energy, &self.magnetization, true)?;
+                .write(thermostat, &self.energy, &self.magnetization, true)?;
         }
         self.hamiltonian = None;
         self.thermostat = None;
@@ -208,7 +211,7 @@ where
     fn on_measure_end(&mut self) -> InstrumentResult<()> {
         if let Some(thermostat) = &self.thermostat {
             self.io
-                .write(&thermostat, &self.energy, &self.magnetization, false)?;
+                .write(thermostat, &self.energy, &self.magnetization, false)?;
         }
         self.hamiltonian = None;
         self.thermostat = None;
@@ -218,12 +221,95 @@ where
     }
 
     /// Hook called after each integration step.
-    fn after_step(&mut self, state: &State<S>) {
+    fn after_step(&mut self, state: &State<S>) -> InstrumentResult<()> {
         if let (Some(thermostat), Some(hamiltonian)) = (&self.thermostat, &self.hamiltonian) {
             let energy = hamiltonian.total_energy(thermostat, state) / state.len() as f64;
             let magnetization = state.magnetization().magnitude() / state.len() as f64;
             self.energy.push(energy);
             self.magnetization.push(magnetization);
         }
+        Ok(())
+    }
+}
+
+pub struct StateSensor<H, S>
+where
+    H: Hamiltonian<S>,
+    S: Spin,
+{
+    io: StateParquetIO,
+    frequency: usize,
+    relax: Option<bool>,
+    step: usize,
+    stage: usize,
+    phantom_h: PhantomData<H>,
+    phantom_s: PhantomData<S>,
+}
+
+impl<H, S> StateSensor<H, S>
+where
+    H: Hamiltonian<S>,
+    S: Spin,
+{
+    pub fn try_new<P: AsRef<Path>>(path: P, frequency: usize) -> IOResult<Self> {
+        Ok(Self {
+            io: StateParquetIO::try_new(path)?,
+            frequency,
+            relax: None,
+            stage: 0,
+            step: 0,
+            phantom_h: PhantomData,
+            phantom_s: PhantomData,
+        })
+    }
+}
+
+impl<H, S> Instrument<H, S> for StateSensor<H, S>
+where
+    H: Hamiltonian<S>,
+    S: Spin,
+{
+    fn on_relax_start(
+        &mut self,
+        _thermostat: &Thermostat,
+        _hamiltonian: &H,
+        _state: &State<S>,
+    ) -> InstrumentResult<()> {
+        self.relax = Some(true);
+        Ok(())
+    }
+
+    fn on_relax_end(&mut self) -> InstrumentResult<()> {
+        self.relax = None;
+        self.step = 0;
+        self.stage += 1;
+        Ok(())
+    }
+
+    fn on_measure_start(
+        &mut self,
+        _thermostat: &Thermostat,
+        _hamiltonian: &H,
+        _state: &State<S>,
+    ) -> InstrumentResult<()> {
+        self.relax = Some(false);
+        Ok(())
+    }
+
+    fn on_measure_end(&mut self) -> InstrumentResult<()> {
+        self.relax = None;
+        self.step = 0;
+        self.stage += 1;
+        Ok(())
+    }
+
+    fn after_step(&mut self, state: &State<S>) -> InstrumentResult<()> {
+        if self.step.is_multiple_of(self.frequency)
+            && let Some(relax) = self.relax
+        {
+            self.io.write(relax, self.stage, self.step, state)?;
+        }
+        self.step += 1;
+        Ok(())
     }
 }

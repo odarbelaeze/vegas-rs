@@ -22,7 +22,7 @@ pub trait Spin: Clone + Add<Self, Output = Self::MagnetizationType> {
     fn down() -> Self;
 
     /// New up a random spin.
-    fn rand<T: Rng>(rng: &mut T) -> Self;
+    fn rand<R: Rng>(rng: &mut R) -> Self;
 
     /// Dot product of two spins.
     fn dot(&self, other: &Self) -> f64;
@@ -79,7 +79,7 @@ impl Spin for IsingSpin {
     }
 
     /// Randomly pick up or down for an Ising spin.
-    fn rand<T: Rng>(rng: &mut T) -> Self {
+    fn rand<R: Rng>(rng: &mut R) -> Self {
         let range = Uniform::new(0f64, 1f64).expect("should always be able to create");
         let r = range.sample(rng);
         if r < 0.5f64 {
@@ -230,7 +230,7 @@ impl Spin for HeisenbergSpin {
         HeisenbergSpin([0f64, 0f64, -1f64])
     }
 
-    fn rand<T: Rng>(rng: &mut T) -> Self {
+    fn rand<R: Rng>(rng: &mut R) -> Self {
         let (x, y, z) = marsaglia(rng);
         HeisenbergSpin([x, y, z])
     }
@@ -328,37 +328,37 @@ impl Add<HeisenbergSpin> for HeisenbergMagnetization {
 
 /// A state of spins.
 #[derive(Clone)]
-pub struct State<T: Spin>(Vec<T>);
+pub struct State<S: Spin>(Vec<S>);
 
-impl<T: Spin> State<T> {
+impl<S: Spin> State<S> {
     /// Create a new state with a given number of spins pointing down.
     pub fn down_with_size(n: usize) -> Self {
-        State::<T>((0..n).map(|_| T::down()).collect())
+        State::<S>((0..n).map(|_| S::down()).collect())
     }
 
     /// Create a new state with a given number of spins pointing up.
     pub fn up_with_size(n: usize) -> Self {
-        State::<T>((0..n).map(|_| T::up()).collect())
+        State::<S>((0..n).map(|_| S::up()).collect())
     }
 
     /// Create a new state with a given number of random spins.
     pub fn rand_with_size<R: Rng>(rng: &mut R, n: usize) -> Self {
-        State::<T>((0..n).map(|_| T::rand(rng)).collect())
+        State::<S>((0..n).map(|_| S::rand(rng)).collect())
     }
 
     /// View the spins in a state.
-    pub fn spins(&self) -> &Vec<T> {
-        let State::<T>(items) = self;
+    pub fn spins(&self) -> &Vec<S> {
+        let State::<S>(items) = self;
         items
     }
 
     /// View a particular spin in a state.
-    pub fn at(&self, index: usize) -> &T {
+    pub fn at(&self, index: usize) -> &S {
         &self.spins()[index]
     }
 
     /// Set a particular spin in a state.
-    pub fn set_at(&mut self, index: usize, spin: T) {
+    pub fn set_at(&mut self, index: usize, spin: S) {
         self.0[index] = spin;
     }
 
@@ -373,10 +373,10 @@ impl<T: Spin> State<T> {
     }
 
     /// Get the magnetization of a state.
-    pub fn magnetization(&self) -> T::MagnetizationType
+    pub fn magnetization(&self) -> S::MagnetizationType
     where
-        T: Spin + Add<T, Output = T::MagnetizationType> + Clone,
-        T::MagnetizationType: Default + Sum<T>,
+        S: Spin + Add<S, Output = S::MagnetizationType> + Clone,
+        S::MagnetizationType: Default + Sum<S>,
     {
         self.spins().iter().cloned().sum()
     }

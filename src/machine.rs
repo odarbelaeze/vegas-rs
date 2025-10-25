@@ -59,15 +59,16 @@ where
     }
 
     /// Run and observe the machine for a given number of steps.
-    fn run<R: Rng>(&mut self, rng: &mut R, steps: usize) {
+    fn run<R: Rng>(&mut self, rng: &mut R, steps: usize) -> MachineResult<()> {
         for _ in 0..steps {
             self.state =
                 self.integrator
                     .step(rng, &self.thermostat, &self.hamiltonian, self.state.clone());
             for instrument in self.instruments.iter_mut() {
-                instrument.after_step(&self.state);
+                instrument.after_step(&self.state)?;
             }
         }
+        Ok(())
     }
 
     /// Relax the machine for a given number of steps.
@@ -75,7 +76,7 @@ where
         for instrument in self.instruments.iter_mut() {
             instrument.on_relax_start(&self.thermostat, &self.hamiltonian, &self.state)?;
         }
-        self.run(rng, relax_steps);
+        self.run(rng, relax_steps)?;
         for instrument in self.instruments.iter_mut() {
             instrument.on_relax_end()?;
         }
@@ -87,7 +88,7 @@ where
         for instrument in self.instruments.iter_mut() {
             instrument.on_measure_start(&self.thermostat, &self.hamiltonian, &self.state)?;
         }
-        self.run(rng, measure_steps);
+        self.run(rng, measure_steps)?;
         for instrument in self.instruments.iter_mut() {
             instrument.on_measure_end()?;
         }

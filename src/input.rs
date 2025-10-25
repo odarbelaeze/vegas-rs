@@ -9,8 +9,8 @@ use vegas_lattice::Lattice;
 
 use crate::{
     error::Result,
-    hamiltonian::{Exchange, ZeemanEnergy},
-    instrument::{Instrument, RawStatSensor, StatSensor},
+    hamiltonian::{Exchange, Hamiltonian, ZeemanEnergy},
+    instrument::{Instrument, RawStatSensor, StatSensor, StateSensor},
     integrator::MetropolisIntegrator,
     machine::Machine,
     program::{CoolDown, HysteresisLoop, Program, Relax},
@@ -104,7 +104,7 @@ pub struct StateOutput {
     /// Write the states to a parquet file
     pub path: PathBuf,
     /// Frequency of writing states
-    pub frequency: u64,
+    pub frequency: usize,
 }
 
 /// Output for a generic simulation.
@@ -226,24 +226,18 @@ impl Default for InputBuilder {
 }
 
 impl Input {
-    fn run_with_spin<T: Spin + 'static, R: Rng>(&self, rng: &mut R) -> Result<()> {
+    fn run_with_spin<S: Spin + 'static, R: Rng>(&self, rng: &mut R) -> Result<()> {
         let lattice = self.lattice();
         let integrator = MetropolisIntegrator::new();
         let hamiltonian =
-            hamiltonian!(Exchange::from_lattice(&lattice), ZeemanEnergy::new(T::up()));
-        let mut instruments: Vec<Box<dyn Instrument<_, _>>> =
-            vec![Box::new(StatSensor::<_, T>::new(Box::new(stdout())))];
-        if let Some(output) = &self.output {
-            if let Some(raw_filename) = &output.raw {
-                instruments.push(Box::new(RawStatSensor::<_, T>::try_new(&raw_filename)?));
-            }
-        }
+            hamiltonian!(Exchange::from_lattice(&lattice), ZeemanEnergy::new(S::up()));
+        let instruments = self.instruments::<_, S>()?;
         let mut machine = Machine::new(
             Thermostat::new(2.8, 0.0),
             hamiltonian,
             integrator,
             instruments,
-            State::<T>::rand_with_size(rng, lattice.sites().len()),
+            State::<S>::rand_with_size(rng, lattice.sites().len()),
         );
         for program in self.steps.iter() {
             match program {
@@ -287,6 +281,27 @@ impl Input {
             lattice = lattice.drop_z();
         }
         lattice
+    }
+
+    fn instruments<H: Hamiltonian<S> + 'static, S: Spin + 'static>(
+        &self,
+    ) -> Result<Vec<Box<dyn Instrument<H, S>>>> {
+        let mut instruments: Vec<Box<dyn Instrument<_, _>>> =
+            vec![Box::new(StatSensor::<_, S>::new(Box::new(stdout())))];
+        if let Some(output) = &self.output
+            && let Some(raw_filename) = &output.raw
+        {
+            instruments.push(Box::new(RawStatSensor::<_, S>::try_new(raw_filename)?));
+        }
+        if let Some(output) = &self.output
+            && let Some(state_output) = &output.state
+        {
+            instruments.push(Box::new(StateSensor::<_, S>::try_new(
+                &state_output.path,
+                state_output.frequency,
+            )?));
+        }
+        Ok(instruments)
     }
 
     pub fn run<R: Rng>(&self, rng: &mut R) -> Result<()> {

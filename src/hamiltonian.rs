@@ -43,8 +43,8 @@ impl Gauge {
     }
 }
 
-impl<T: Spin> Hamiltonian<T> for Gauge {
-    fn energy(&self, _thermostat: &Thermostat, state: &State<T>, index: usize) -> f64 {
+impl<S: Spin> Hamiltonian<S> for Gauge {
+    fn energy(&self, _thermostat: &Thermostat, state: &State<S>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         self.value
     }
@@ -100,11 +100,11 @@ where
     reference: S,
 }
 
-impl<T> ZeemanEnergy<T>
+impl<S> ZeemanEnergy<S>
 where
-    T: Spin,
+    S: Spin,
 {
-    pub fn new(s: T) -> Self {
+    pub fn new(s: S) -> Self {
         Self { reference: s }
     }
 }
@@ -196,11 +196,11 @@ where
     phantom: PhantomData<S>,
 }
 
-impl<T, U, V> Compound<T, U, V>
+impl<S, U, V> Compound<S, U, V>
 where
-    T: Spin,
-    U: Hamiltonian<T>,
-    V: Hamiltonian<T>,
+    S: Spin,
+    U: Hamiltonian<S>,
+    V: Hamiltonian<S>,
 {
     pub fn new(a: U, b: V) -> Self {
         Self {

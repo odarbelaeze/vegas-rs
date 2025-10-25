@@ -48,8 +48,8 @@ impl ObservableParquetIO {
     pub fn write(
         &mut self,
         thermostat: &Thermostat,
-        energy: &Vec<f64>,
-        magnetization: &Vec<f64>,
+        energy: &[f64],
+        magnetization: &[f64],
         relax: bool,
     ) -> IOResult<()> {
         debug_assert!(energy.len() == magnetization.len());
@@ -66,8 +66,8 @@ impl ObservableParquetIO {
         let relax: BooleanArray = repeat_n(Some(relax), energy.len()).collect();
         let temp: Float64Array = repeat_n(thermostat.temperature(), energy.len()).collect();
         let field: Float64Array = repeat_n(thermostat.field(), energy.len()).collect();
-        let energy: Float64Array = Float64Array::from(energy.clone());
-        let magnetization: Float64Array = Float64Array::from(magnetization.clone());
+        let energy: Float64Array = Float64Array::from(energy.to_owned());
+        let magnetization: Float64Array = Float64Array::from(magnetization.to_owned());
 
         let batch = RecordBatch::try_new(
             self.schema.clone(),
@@ -85,22 +85,18 @@ impl ObservableParquetIO {
         if let Some(writer) = &mut self.writer {
             writer.write(&batch)?;
         } else {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Writer has been closed",
-            ))?;
+            return Err(std::io::Error::other("Writer has been closed"))?;
         }
-
         Ok(())
     }
 }
 
 impl Drop for ObservableParquetIO {
     fn drop(&mut self) {
-        if let Some(self_writer) = self.writer.take() {
-            if let Err(err) = self_writer.close() {
-                eprintln!("error closing parquet writer: {}", err);
-            }
+        if let Some(self_writer) = self.writer.take()
+            && let Err(err) = self_writer.close()
+        {
+            eprintln!("error closing parquet writer: {}", err);
         }
     }
 }
@@ -108,14 +104,14 @@ impl Drop for ObservableParquetIO {
 pub struct StateParquetIO {
     schema: Arc<Schema>,
     writer: Option<ArrowWriter<File>>,
-    step: usize,
-    frequency: usize,
 }
 
 impl StateParquetIO {
-    pub fn try_new<P: AsRef<Path>>(path: P, frequency: usize) -> IOResult<Self> {
+    pub fn try_new<P: AsRef<Path>>(path: P) -> IOResult<Self> {
         let file = File::create(path)?;
         let schema = Arc::new(Schema::new(vec![
+            Field::new("relax", DataType::Boolean, false),
+            Field::new("stage", DataType::UInt64, false),
             Field::new("step", DataType::UInt64, false),
             Field::new("id", DataType::UInt64, false),
             Field::new("sx", DataType::Float64, false),
@@ -129,17 +125,19 @@ impl StateParquetIO {
         Ok(Self {
             schema: schema.clone(),
             writer: Some(writer),
-            step: 0,
-            frequency,
         })
     }
 
-    pub fn write<T: Spin>(&mut self, state: &State<T>) -> IOResult<()> {
-        if self.step.is_multiple_of(self.frequency) {
-            self.step += 1;
-            return Ok(());
-        }
-        let step = UInt64Array::from(repeat_n(self.step as u64, state.len()).collect::<Vec<_>>());
+    pub fn write<S: Spin>(
+        &mut self,
+        relax: bool,
+        stage: usize,
+        step: usize,
+        state: &State<S>,
+    ) -> IOResult<()> {
+        let relax = BooleanArray::from(repeat_n(relax, state.len()).collect::<Vec<_>>());
+        let stage = UInt64Array::from(repeat_n(stage as u64, state.len()).collect::<Vec<_>>());
+        let step = UInt64Array::from(repeat_n(step as u64, state.len()).collect::<Vec<_>>());
         let id = UInt64Array::from((0..state.len()).map(|i| i as u64).collect::<Vec<_>>());
         let sx = Float64Array::from(state.spins().iter().map(|s| s.sx()).collect::<Vec<_>>());
         let sy = Float64Array::from(state.spins().iter().map(|s| s.sy()).collect::<Vec<_>>());
@@ -147,6 +145,8 @@ impl StateParquetIO {
         let batch = RecordBatch::try_new(
             self.schema.clone(),
             vec![
+                Arc::new(relax),
+                Arc::new(stage),
                 Arc::new(step),
                 Arc::new(id),
                 Arc::new(sx),
@@ -157,10 +157,7 @@ impl StateParquetIO {
         if let Some(writer) = &mut self.writer {
             writer.write(&batch)?;
         } else {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Writer has been closed",
-            ))?;
+            return Err(std::io::Error::other("Writer has been closed"))?;
         }
         Ok(())
     }
@@ -168,8 +165,10 @@ impl StateParquetIO {
 
 impl Drop for StateParquetIO {
     fn drop(&mut self) {
-        if let Some(self_writer) = self.writer.take() {
-            let _ = self_writer.close();
+        if let Some(writter) = self.writer.take()
+            && let Err(err) = writter.close()
+        {
+            eprintln!("error closing parquet writer: {}", err);
         }
     }
 }
