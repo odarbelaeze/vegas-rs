@@ -60,12 +60,12 @@ where
 
     /// Run and observe the machine for a given number of steps.
     fn run<R: Rng>(&mut self, rng: &mut R, steps: usize) {
-        for step in 0..steps {
+        for _ in 0..steps {
             self.state =
                 self.integrator
                     .step(rng, &self.thermostat, &self.hamiltonian, self.state.clone());
             for instrument in self.instruments.iter_mut() {
-                instrument.after_step(step, &self.state);
+                instrument.after_step(&self.state);
             }
         }
     }

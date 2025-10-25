@@ -1,8 +1,8 @@
 //! IO module for reading and writing data to and from files
 
-use crate::error::IOResult as Result;
-use crate::observables::Sensor;
+use crate::error::IOResult;
 use crate::state::{Spin, State};
+use crate::thermostat::Thermostat;
 
 use std::fs::File;
 use std::iter::repeat_n;
@@ -16,19 +16,20 @@ use parquet::{arrow::ArrowWriter, basic::Compression, file::properties::WriterPr
 
 pub struct ObservableParquetIO {
     schema: Arc<Schema>,
-    writer: ArrowWriter<File>,
+    writer: Option<ArrowWriter<File>>,
     step: usize,
     stage: u64,
 }
 
 impl ObservableParquetIO {
-    pub fn try_new<P: AsRef<Path>>(path: P) -> Result<Self> {
+    pub fn try_new<P: AsRef<Path>>(path: P) -> IOResult<Self> {
         let file = File::create(path)?;
         let schema = Arc::new(Schema::new(vec![
             Field::new("step", DataType::UInt64, false),
             Field::new("stage", DataType::UInt64, false),
             Field::new("relax", DataType::Boolean, false),
-            Field::new("beta", DataType::Float64, false),
+            Field::new("temperature", DataType::Float64, false),
+            Field::new("field", DataType::Float64, false),
             Field::new("energy", DataType::Float64, false),
             Field::new("magnetization", DataType::Float64, false),
         ]));
@@ -38,32 +39,35 @@ impl ObservableParquetIO {
         let writer = ArrowWriter::try_new(file, schema.clone(), Some(properties))?;
         Ok(Self {
             schema: schema.clone(),
-            writer,
+            writer: Some(writer),
             step: 0,
             stage: 0,
         })
     }
 
-    pub fn write(&mut self, sensor: &Sensor, relax: bool) -> Result<()> {
+    pub fn write(
+        &mut self,
+        thermostat: &Thermostat,
+        energy: &Vec<f64>,
+        magnetization: &Vec<f64>,
+        relax: bool,
+    ) -> IOResult<()> {
+        debug_assert!(energy.len() == magnetization.len());
         // Let's think that every step needs to be recorded here
-        let step: UInt64Array = (self.step..self.step + sensor.len())
+        let step: UInt64Array = (self.step..self.step + energy.len())
             .map(|i| i as u64)
             .collect();
-        self.step += sensor.len();
+        self.step += energy.len();
 
         // Each time we call write we enter a different stage of the run
-        let stage: UInt64Array = repeat_n(self.stage, sensor.len()).collect();
+        let stage: UInt64Array = repeat_n(self.stage, energy.len()).collect();
         self.stage += 1;
 
-        // We should indicate if it's a relaxation step
-        let relax: BooleanArray = repeat_n(Some(relax), sensor.len()).collect();
-
-        // Grab the beta value
-        let beta: Float64Array = repeat_n(sensor.beta(), sensor.len()).collect();
-
-        // Grab the measurement values
-        let energy: Float64Array = Float64Array::from(sensor.energy().clone());
-        let magnetization: Float64Array = Float64Array::from(sensor.magnetization().clone());
+        let relax: BooleanArray = repeat_n(Some(relax), energy.len()).collect();
+        let temp: Float64Array = repeat_n(thermostat.temperature(), energy.len()).collect();
+        let field: Float64Array = repeat_n(thermostat.field(), energy.len()).collect();
+        let energy: Float64Array = Float64Array::from(energy.clone());
+        let magnetization: Float64Array = Float64Array::from(magnetization.clone());
 
         let batch = RecordBatch::try_new(
             self.schema.clone(),
@@ -71,32 +75,45 @@ impl ObservableParquetIO {
                 Arc::new(step),
                 Arc::new(stage),
                 Arc::new(relax),
-                Arc::new(beta),
+                Arc::new(temp),
+                Arc::new(field),
                 Arc::new(energy),
                 Arc::new(magnetization),
             ],
         )?;
 
-        self.writer.write(&batch)?;
+        if let Some(writer) = &mut self.writer {
+            writer.write(&batch)?;
+        } else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Writer has been closed",
+            ))?;
+        }
 
         Ok(())
     }
+}
 
-    pub fn close(self) -> Result<()> {
-        self.writer.close()?;
-        Ok(())
+impl Drop for ObservableParquetIO {
+    fn drop(&mut self) {
+        if let Some(self_writer) = self.writer.take() {
+            if let Err(err) = self_writer.close() {
+                eprintln!("error closing parquet writer: {}", err);
+            }
+        }
     }
 }
 
 pub struct StateParquetIO {
     schema: Arc<Schema>,
-    writer: ArrowWriter<File>,
+    writer: Option<ArrowWriter<File>>,
     step: usize,
     frequency: usize,
 }
 
 impl StateParquetIO {
-    pub fn try_new<P: AsRef<Path>>(path: P, frequency: usize) -> Result<Self> {
+    pub fn try_new<P: AsRef<Path>>(path: P, frequency: usize) -> IOResult<Self> {
         let file = File::create(path)?;
         let schema = Arc::new(Schema::new(vec![
             Field::new("step", DataType::UInt64, false),
@@ -111,13 +128,13 @@ impl StateParquetIO {
         let writer = ArrowWriter::try_new(file, schema.clone(), Some(properties))?;
         Ok(Self {
             schema: schema.clone(),
-            writer,
+            writer: Some(writer),
             step: 0,
             frequency,
         })
     }
 
-    pub fn write<T: Spin>(&mut self, state: &State<T>) -> Result<()> {
+    pub fn write<T: Spin>(&mut self, state: &State<T>) -> IOResult<()> {
         if self.step.is_multiple_of(self.frequency) {
             self.step += 1;
             return Ok(());
@@ -137,7 +154,22 @@ impl StateParquetIO {
                 Arc::new(sz),
             ],
         )?;
-        self.writer.write(&batch)?;
+        if let Some(writer) = &mut self.writer {
+            writer.write(&batch)?;
+        } else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Writer has been closed",
+            ))?;
+        }
         Ok(())
+    }
+}
+
+impl Drop for StateParquetIO {
+    fn drop(&mut self) {
+        if let Some(self_writer) = self.writer.take() {
+            let _ = self_writer.close();
+        }
     }
 }

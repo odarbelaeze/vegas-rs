@@ -65,10 +65,8 @@ pub enum MachineError {
 pub enum InstrumentError {
     #[error("std io error: {0}")]
     StdIOError(#[from] StdIOError),
-    #[error("parquet error: {0}")]
-    ParquetError(#[from] ParquetError),
-    #[error("arrow error: {0}")]
-    ArrowError(#[from] ArrowError),
+    #[error("io error: {0}")]
+    IOError(#[from] IOError),
 }
 
 /// Result type for the vegas package

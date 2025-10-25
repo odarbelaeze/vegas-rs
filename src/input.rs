@@ -10,9 +10,8 @@ use vegas_lattice::Lattice;
 use crate::{
     error::Result,
     hamiltonian::{Exchange, ZeemanEnergy},
-    instrument::{Instrument, StatSensor},
+    instrument::{Instrument, RawStatSensor, StatSensor},
     integrator::MetropolisIntegrator,
-    io::ObservableParquetIO,
     machine::Machine,
     program::{CoolDown, HysteresisLoop, Program, Relax},
     state::{HeisenbergSpin, IsingSpin, Spin, State},
@@ -232,15 +231,13 @@ impl Input {
         let integrator = MetropolisIntegrator::new();
         let hamiltonian =
             hamiltonian!(Exchange::from_lattice(&lattice), ZeemanEnergy::new(T::up()));
-        let raw_io = match &self.output {
-            Some(output) => match &output.raw {
-                Some(path) => Some(ObservableParquetIO::try_new(path)?),
-                None => None,
-            },
-            None => None,
-        };
-        let instruments: Vec<Box<dyn Instrument<_, _>>> =
+        let mut instruments: Vec<Box<dyn Instrument<_, _>>> =
             vec![Box::new(StatSensor::<_, T>::new(Box::new(stdout())))];
+        if let Some(output) = &self.output {
+            if let Some(raw_filename) = &output.raw {
+                instruments.push(Box::new(RawStatSensor::<_, T>::try_new(&raw_filename)?));
+            }
+        }
         let mut machine = Machine::new(
             Thermostat::new(2.8, 0.0),
             hamiltonian,
@@ -260,9 +257,6 @@ impl Input {
                     hysteresis.run(rng, &mut machine)?;
                 }
             }
-        }
-        if let Some(raw_io) = raw_io {
-            raw_io.close()?;
         }
         Ok(())
     }

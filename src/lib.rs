@@ -54,7 +54,6 @@ pub mod instrument;
 pub mod integrator;
 pub mod io;
 pub mod machine;
-pub mod observables;
 pub mod program;
 pub mod state;
 pub mod thermostat;
