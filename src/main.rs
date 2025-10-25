@@ -93,7 +93,7 @@ fn bench_lattice(model: Model, input: &Path) -> Result<()> {
 
 fn run_input(input: PathBuf) -> Result<()> {
     let mut data = String::new();
-    if &input == "-" {
+    if input == PathBuf::from("-") {
         stdin().read_to_string(&mut data).map_err(IOError::from)?;
     } else {
         let mut file = File::open(input).map_err(IOError::from)?;
