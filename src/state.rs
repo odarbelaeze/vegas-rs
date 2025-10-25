@@ -1,6 +1,22 @@
-//! This little library should have traits and routines to build a generic
-//! atomistic Monte Carlo simulation program to deal with magnetic properties
-//! of materials.
+//! Defines spins, magnetizations, and states.
+//!
+//! Spins are the basic building blocks of the library. They represent the spin
+//! of an atom in a magnetic material. The library provides a `Spin` trait that
+//! you can implement for your own spin types.
+//!
+//! # Examples
+//!
+//! ```rust
+//! use rand::SeedableRng;
+//! use rand_pcg::Pcg64;
+//! use vegas::state::{HeisenbergSpin, IsingSpin, State, Spin};
+//! let mut rng = Pcg64::from_rng(&mut rand::rng());
+//!
+//! let ising_state = State::<IsingSpin>::rand_with_size(&mut rng, 100);
+//! let heisenberg_state = State::<HeisenbergSpin>::rand_with_size(&mut rng, 100);
+//! let ising_spin = IsingSpin::rand(&mut rng);
+//! let heisenberg_spin = HeisenbergSpin::up();
+//! ```
 
 use std::iter::Sum;
 use std::ops::Add;
@@ -8,7 +24,7 @@ use std::ops::Add;
 use rand::Rng;
 use rand::distr::{Distribution, Uniform};
 
-use super::util::marsaglia;
+use crate::util::marsaglia;
 
 /// This trait specifies what a spin is.
 pub trait Spin: Clone + Add<Self, Output = Self::MagnetizationType> {

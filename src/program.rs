@@ -16,10 +16,10 @@ pub trait Program {
     /// Run the program on a system returning the last state.
     fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> ProgramResult<()>
     where
-        S: Spin,
-        H: Hamiltonian<S>,
+        R: Rng,
         I: Integrator<S>,
-        R: Rng;
+        H: Hamiltonian<S>,
+        S: Spin;
 }
 
 /// A program that relaxes the system.

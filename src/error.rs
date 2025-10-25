@@ -1,4 +1,6 @@
-//! Errors for the vegas package
+//! Errors for the vegas package.
+//!
+//! This module defines error types and result aliases used throughout the vegas package.
 
 use arrow::error::ArrowError;
 use parquet::errors::ParquetError;
