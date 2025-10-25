@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::{Read, stdin},
+    io::{Read, stdin, stdout},
     path::{Path, PathBuf},
 };
 
@@ -13,6 +13,7 @@ use vegas::{
     error::{IOError, Result},
     hamiltonian::Exchange,
     input::{Input, Model},
+    instrument::{Instrument, StatSensor},
     integrator::{MetropolisFlipIntegrator, MetropolisIntegrator},
     machine::Machine,
     program::{CoolDown, Program, Relax},
@@ -29,8 +30,11 @@ fn bench(lattice: Lattice, model: Model) -> Result<()> {
             let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
             let thermostat = Thermostat::new(2.8, 0.0);
-            let mut machine = Machine::new(thermostat, hamiltonian, integrator, Vec::new(), state);
-            program.run(&mut rng, &mut machine)
+            let instruments: Vec<Box<dyn Instrument<_, _>>> =
+                vec![Box::new(StatSensor::<_, _>::new(Box::new(stdout())))];
+            let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);
+            program.run(&mut rng, &mut machine)?;
+            Ok(())
         }
         Model::Heisenberg => {
             let program = CoolDown::default().set_max_temperature(2.5);
@@ -38,8 +42,11 @@ fn bench(lattice: Lattice, model: Model) -> Result<()> {
             let state = State::<HeisenbergSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
             let thermostat = Thermostat::new(2.8, 0.0);
-            let mut machine = Machine::new(thermostat, hamiltonian, integrator, Vec::new(), state);
-            program.run(&mut rng, &mut machine)
+            let instruments: Vec<Box<dyn Instrument<_, _>>> =
+                vec![Box::new(StatSensor::<_, _>::new(Box::new(stdout())))];
+            let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);
+            program.run(&mut rng, &mut machine)?;
+            Ok(())
         }
     }
 }
@@ -58,9 +65,12 @@ fn bench_ising(length: usize) -> Result<()> {
     let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
     let integrator = MetropolisFlipIntegrator::new();
     let thermostat = Thermostat::new(2.8, 0.0);
-    let mut machine = Machine::new(thermostat, hamiltonian, integrator, Vec::new(), state);
+    let instruments: Vec<Box<dyn Instrument<_, _>>> =
+        vec![Box::new(StatSensor::<_, _>::new(Box::new(stdout())))];
+    let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);
     relax.run(&mut rng, &mut machine)?;
-    curie.run(&mut rng, &mut machine)
+    curie.run(&mut rng, &mut machine)?;
+    Ok(())
 }
 
 fn bench_model(model: Model, length: usize) -> Result<()> {

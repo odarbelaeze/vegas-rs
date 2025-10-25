@@ -4,7 +4,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::{ProgramError, Result},
+    error::{ProgramError, ProgramResult},
     hamiltonian::Hamiltonian,
     integrator::Integrator,
     machine::Machine,
@@ -14,7 +14,7 @@ use crate::{
 /// A program is a sequence of steps that can be run on a system.
 pub trait Program {
     /// Run the program on a system returning the last state.
-    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
+    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> ProgramResult<()>
     where
         S: Spin,
         H: Hamiltonian<S>,
@@ -55,7 +55,7 @@ impl Default for Relax {
 }
 
 impl Program for Relax {
-    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
+    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> ProgramResult<()>
     where
         I: Integrator<S>,
         H: Hamiltonian<S>,
@@ -63,13 +63,13 @@ impl Program for Relax {
         R: Rng,
     {
         if self.steps == 0 {
-            return Err(ProgramError::NoSteps.into());
+            return Err(ProgramError::NoSteps);
         }
         if self.temperature < f64::EPSILON {
-            return Err(ProgramError::ZeroTemperature.into());
+            return Err(ProgramError::ZeroTemperature);
         }
         machine.set_thermostat(machine.thermostat().with_temperature(self.temperature));
-        machine.relax_for(rng, self.steps);
+        machine.relax_for(rng, self.steps)?;
         Ok(())
     }
 }
@@ -140,7 +140,7 @@ impl Default for CoolDown {
 }
 
 impl Program for CoolDown {
-    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
+    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> ProgramResult<()>
     where
         I: Integrator<S>,
         H: Hamiltonian<S>,
@@ -148,22 +148,22 @@ impl Program for CoolDown {
         R: Rng,
     {
         if self.max_temperature < self.min_temperature {
-            return Err(ProgramError::TemperatureMaxLessThanMin.into());
+            return Err(ProgramError::TemperatureMaxLessThanMin);
         }
         if self.steps == 0 {
-            return Err(ProgramError::NoSteps.into());
+            return Err(ProgramError::NoSteps);
         }
         if self.min_temperature < f64::EPSILON {
-            return Err(ProgramError::ZeroTemperature.into());
+            return Err(ProgramError::ZeroTemperature);
         }
         if self.cool_rate < f64::EPSILON {
-            return Err(ProgramError::ZeroCoolRate.into());
+            return Err(ProgramError::ZeroCoolRate);
         }
         let mut temperature = self.max_temperature;
         loop {
             machine.set_thermostat(machine.thermostat().with_temperature(temperature));
-            machine.relax_for(rng, self.relax);
-            machine.measure_for(rng, self.steps);
+            machine.relax_for(rng, self.relax)?;
+            machine.measure_for(rng, self.steps)?;
             temperature -= self.cool_rate;
             if temperature < self.min_temperature {
                 break;
@@ -239,7 +239,7 @@ impl Default for HysteresisLoop {
 }
 
 impl Program for HysteresisLoop {
-    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> Result<()>
+    fn run<R, I, H, S>(&self, rng: &mut R, machine: &mut Machine<H, I, S>) -> ProgramResult<()>
     where
         R: Rng,
         I: Integrator<S>,
@@ -247,23 +247,23 @@ impl Program for HysteresisLoop {
         S: Spin,
     {
         if self.steps == 0 {
-            return Err(ProgramError::NoSteps.into());
+            return Err(ProgramError::NoSteps);
         }
         if self.temperature < f64::EPSILON {
-            return Err(ProgramError::ZeroTemperature.into());
+            return Err(ProgramError::ZeroTemperature);
         }
         if self.max_field < f64::EPSILON {
-            return Err(ProgramError::ZeroField.into());
+            return Err(ProgramError::ZeroField);
         }
         if self.field_step < f64::EPSILON {
-            return Err(ProgramError::ZeroFieldStep.into());
+            return Err(ProgramError::ZeroFieldStep);
         }
         machine.set_thermostat(machine.thermostat().with_temperature(self.temperature));
         let mut field = 0.0;
         loop {
             machine.set_thermostat(machine.thermostat().with_field(field));
-            machine.relax_for(rng, self.relax);
-            machine.measure_for(rng, self.steps);
+            machine.relax_for(rng, self.relax)?;
+            machine.measure_for(rng, self.steps)?;
             field += self.field_step;
             if field > self.max_field {
                 break;
@@ -271,8 +271,8 @@ impl Program for HysteresisLoop {
         }
         loop {
             machine.set_thermostat(machine.thermostat().with_field(field));
-            machine.relax_for(rng, self.relax);
-            machine.measure_for(rng, self.steps);
+            machine.relax_for(rng, self.relax)?;
+            machine.measure_for(rng, self.steps)?;
             field -= self.field_step;
             if field < -self.max_field {
                 break;
@@ -280,8 +280,8 @@ impl Program for HysteresisLoop {
         }
         loop {
             machine.set_thermostat(machine.thermostat().with_field(field));
-            machine.relax_for(rng, self.relax);
-            machine.measure_for(rng, self.steps);
+            machine.relax_for(rng, self.relax)?;
+            machine.measure_for(rng, self.steps)?;
             field += self.field_step;
             if field < self.max_field {
                 break;

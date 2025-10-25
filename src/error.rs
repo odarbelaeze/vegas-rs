@@ -38,11 +38,31 @@ pub enum ProgramError {
     ZeroField,
     #[error("field step must be greater than zero")]
     ZeroFieldStep,
+    #[error("machine error: {0}")]
+    MachineError(#[from] MachineError),
 }
 
 // Error type for IO operations
 #[derive(Error, Debug)]
 pub enum IOError {
+    #[error("std io error: {0}")]
+    StdIOError(#[from] StdIOError),
+    #[error("parquet error: {0}")]
+    ParquetError(#[from] ParquetError),
+    #[error("arrow error: {0}")]
+    ArrowError(#[from] ArrowError),
+}
+
+// Error type for machine operations
+#[derive(Error, Debug)]
+pub enum MachineError {
+    #[error("instrument error: {0}")]
+    InstrumentError(#[from] InstrumentError),
+}
+
+// Error type for instrument operations
+#[derive(Error, Debug)]
+pub enum InstrumentError {
     #[error("std io error: {0}")]
     StdIOError(#[from] StdIOError),
     #[error("parquet error: {0}")]
@@ -59,3 +79,9 @@ pub type ProgramResult<T> = StdResult<T, ProgramError>;
 
 /// Result type for IO operations
 pub type IOResult<T> = StdResult<T, IOError>;
+
+/// Result type for machine operations
+pub type MachineResult<T> = StdResult<T, MachineError>;
+
+/// Result type for instrument operations
+pub type InstrumentResult<T> = StdResult<T, InstrumentError>;

@@ -3,6 +3,7 @@
 use rand::Rng;
 
 use crate::{
+    error::MachineResult,
     hamiltonian::Hamiltonian,
     instrument::Instrument,
     integrator::Integrator,
@@ -70,24 +71,26 @@ where
     }
 
     /// Relax the machine for a given number of steps.
-    pub fn relax_for<R: Rng>(&mut self, rng: &mut R, relax_steps: usize) {
+    pub fn relax_for<R: Rng>(&mut self, rng: &mut R, relax_steps: usize) -> MachineResult<()> {
         for instrument in self.instruments.iter_mut() {
-            instrument.before_relax(&self.thermostat, &self.hamiltonian, &self.state);
+            instrument.on_relax_start(&self.thermostat, &self.hamiltonian, &self.state)?;
         }
         self.run(rng, relax_steps);
         for instrument in self.instruments.iter_mut() {
-            instrument.on_relax_end(&self.state);
+            instrument.on_relax_end()?;
         }
+        Ok(())
     }
 
     /// Measure the machine for a given number of steps.
-    pub fn measure_for<R: Rng>(&mut self, rng: &mut R, measure_steps: usize) {
+    pub fn measure_for<R: Rng>(&mut self, rng: &mut R, measure_steps: usize) -> MachineResult<()> {
         for instrument in self.instruments.iter_mut() {
-            instrument.on_measure_start(&self.thermostat, &self.hamiltonian, &self.state);
+            instrument.on_measure_start(&self.thermostat, &self.hamiltonian, &self.state)?;
         }
         self.run(rng, measure_steps);
         for instrument in self.instruments.iter_mut() {
-            instrument.on_measure_end(&self.state);
+            instrument.on_measure_end()?;
         }
+        Ok(())
     }
 }

@@ -45,9 +45,10 @@
 //! * `ZeemanEnergy` - A hamiltonian that calculates the Zeeman energy of a spin system.
 //! * `Compound` - A hamiltonian that combines multiple hamiltonians.
 
-pub mod error;
 #[macro_use]
 pub mod hamiltonian;
+mod accumulator;
+pub mod error;
 pub mod input;
 pub mod instrument;
 pub mod integrator;

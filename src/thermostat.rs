@@ -1,5 +1,6 @@
 //! Represents a thermal bath for spin systems.
 
+#[derive(Debug, Clone)]
 pub struct Thermostat {
     temperature: f64,
     field: f64,
