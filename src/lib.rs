@@ -69,7 +69,7 @@
 //! thermostat that controls the temperature, and the instruments that measure
 //! properties of the system.
 //!
-//! A machine can relax or mesasure the system for a given number of steps during which
+//! A machine can relax or measure the system for a given number of steps during which
 //! the thermal conditions don't change.
 //!
 //! The machine also provides hooks for changing instruments to measure different

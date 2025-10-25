@@ -132,7 +132,7 @@ where
     }
 }
 
-/// An instrument that stores raw stats in a parket file.
+/// An instrument that stores raw stats in a parquet file.
 pub struct RawStatSensor<H, S>
 where
     H: Hamiltonian<S>,

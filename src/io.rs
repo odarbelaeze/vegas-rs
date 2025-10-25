@@ -165,8 +165,8 @@ impl StateParquetIO {
 
 impl Drop for StateParquetIO {
     fn drop(&mut self) {
-        if let Some(writter) = self.writer.take()
-            && let Err(err) = writter.close()
+        if let Some(writer) = self.writer.take()
+            && let Err(err) = writer.close()
         {
             eprintln!("error closing parquet writer: {}", err);
         }
