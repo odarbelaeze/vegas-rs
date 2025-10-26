@@ -47,7 +47,7 @@ where
     I: Integrator<S>,
     S: Spin,
 {
-    thermostat: Thermostat,
+    thermostat: Thermostat<S>,
     hamiltonian: H,
     integrator: I,
     instruments: Vec<Box<dyn Instrument<H, S>>>,
@@ -62,7 +62,7 @@ where
 {
     /// Create a new machine with a given temperature, field, hamiltonian,
     pub fn new(
-        thermostat: Thermostat,
+        thermostat: Thermostat<S>,
         hamiltonian: H,
         integrator: I,
         instruments: Vec<Box<dyn Instrument<H, S>>>,
@@ -78,12 +78,12 @@ where
     }
 
     /// Get the current thermostat of the machine.
-    pub fn thermostat(&self) -> &Thermostat {
+    pub fn thermostat(&self) -> &Thermostat<S> {
         &self.thermostat
     }
 
     /// Set the thermostat of the machine.
-    pub fn set_thermostat(&mut self, thermostat: Thermostat) {
+    pub fn set_thermostat(&mut self, thermostat: Thermostat<S>) {
         self.thermostat = thermostat;
     }
 

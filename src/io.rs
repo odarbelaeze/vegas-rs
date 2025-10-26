@@ -45,11 +45,11 @@ impl ObservableParquetIO {
         })
     }
 
-    pub fn write(
+    pub fn write<S: Spin>(
         &mut self,
         relax: bool,
         stage: usize,
-        thermostat: &Thermostat,
+        thermostat: &Thermostat<S>,
         energy: &[f64],
         magnetization: &[f64],
     ) -> IoResult<()> {
@@ -58,7 +58,7 @@ impl ObservableParquetIO {
         let stage: UInt64Array = repeat_n(stage as u64, energy.len()).collect();
         let relax: BooleanArray = repeat_n(Some(relax), energy.len()).collect();
         let temp: Float64Array = repeat_n(thermostat.temperature(), energy.len()).collect();
-        let field: Float64Array = repeat_n(thermostat.field(), energy.len()).collect();
+        let field: Float64Array = repeat_n(thermostat.field().magnitude(), energy.len()).collect();
         let energy: Float64Array = Float64Array::from(energy.to_owned());
         let magnetization: Float64Array = Float64Array::from(magnetization.to_owned());
 

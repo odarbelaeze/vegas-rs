@@ -11,16 +11,21 @@
 //! let thermostat = Thermostat::new(3.0, 0.5);
 //! ```
 
+use crate::state::{Field, Spin};
+
 /// A thermostat representing a thermal bath with a given temperature and field.
 #[derive(Debug, Clone)]
-pub struct Thermostat {
+pub struct Thermostat<S: Spin> {
     temperature: f64,
-    field: f64,
+    field: Field<S>,
 }
 
-impl Thermostat {
+impl<S> Thermostat<S>
+where
+    S: Spin,
+{
     /// Create a new thermostat with a given temperature and field.
-    pub fn new(temperature: f64, field: f64) -> Self {
+    pub fn new(temperature: f64, field: Field<S>) -> Self {
         let _temp = if temperature < f64::EPSILON {
             f64::EPSILON
         } else {
@@ -36,7 +41,7 @@ impl Thermostat {
     pub fn near_zero() -> Self {
         Thermostat {
             temperature: f64::EPSILON,
-            field: 0.0,
+            field: Field::zero(),
         }
     }
 
@@ -49,12 +54,12 @@ impl Thermostat {
         };
         Thermostat {
             temperature: _temp,
-            field: self.field,
+            field: self.field.clone(),
         }
     }
 
     /// Returns a new thermostat with the given field.
-    pub fn with_field(&self, field: f64) -> Self {
+    pub fn with_field(&self, field: Field<S>) -> Self {
         Thermostat {
             temperature: self.temperature,
             field,
@@ -67,7 +72,7 @@ impl Thermostat {
     }
 
     /// Get the field of the thermostat.
-    pub fn field(&self) -> f64 {
-        self.field
+    pub fn field(&self) -> &Field<S> {
+        &self.field
     }
 }

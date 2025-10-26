@@ -44,7 +44,7 @@ use crate::{
     error::{ProgramError, ProgramResult},
     integrator::Integrator,
     machine::Machine,
-    state::Spin,
+    state::{Field, Spin},
 };
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -297,31 +297,34 @@ impl Program for HysteresisLoop {
             return Err(ProgramError::ZeroFieldStep);
         }
         machine.set_thermostat(machine.thermostat().with_temperature(self.temperature));
-        let mut field = 0.0;
+        let mut magnitude = 0.0;
         loop {
+            let field = Field::new(S::up(), magnitude);
             machine.set_thermostat(machine.thermostat().with_field(field));
             machine.relax_for(rng, self.relax)?;
             machine.measure_for(rng, self.steps)?;
-            field += self.field_step;
-            if field > self.max_field {
+            magnitude += self.field_step;
+            if magnitude > self.max_field {
                 break;
             }
         }
         loop {
+            let field = Field::new(S::up(), magnitude);
             machine.set_thermostat(machine.thermostat().with_field(field));
             machine.relax_for(rng, self.relax)?;
             machine.measure_for(rng, self.steps)?;
-            field -= self.field_step;
-            if field < -self.max_field {
+            magnitude -= self.field_step;
+            if magnitude < -self.max_field {
                 break;
             }
         }
         loop {
+            let field = Field::new(S::up(), magnitude);
             machine.set_thermostat(machine.thermostat().with_field(field));
             machine.relax_for(rng, self.relax)?;
             machine.measure_for(rng, self.steps)?;
-            field += self.field_step;
-            if field < self.max_field {
+            magnitude += self.field_step;
+            if magnitude < self.max_field {
                 break;
             }
         }

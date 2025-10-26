@@ -153,7 +153,7 @@ impl Spin for HeisenbergSpin {
 
     fn from_projections(sx: f64, sy: f64, sz: f64) -> Field<Self> {
         let magnitude = (sx * sx + sy * sy + sz * sz).sqrt();
-        if magnitude.abs() < std::f64::EPSILON {
+        if magnitude.abs() < f64::EPSILON {
             Field::zero()
         } else {
             Field::new(
@@ -198,16 +198,17 @@ impl Flip for HeisenbergSpin {
 }
 
 /// Field represents a magnetic field for the given spin type.
+#[derive(Debug, Clone)]
 pub struct Field<S: Spin> {
-    pub direction: S,
+    pub orientation: S,
     pub magnitude: f64,
 }
 
 impl<S: Spin> Field<S> {
     /// Create a new field with given direction and magnitude.
-    pub fn new(direction: S, magnitude: f64) -> Self {
+    pub fn new(orientation: S, magnitude: f64) -> Self {
         Field {
-            direction,
+            orientation,
             magnitude,
         }
     }
@@ -215,7 +216,7 @@ impl<S: Spin> Field<S> {
     /// Create a zero field.
     pub fn zero() -> Self {
         Field {
-            direction: S::up(),
+            orientation: S::up(),
             magnitude: 0.0,
         }
     }
@@ -223,6 +224,11 @@ impl<S: Spin> Field<S> {
     /// Get the magnitude of the field.
     pub fn magnitude(&self) -> f64 {
         self.magnitude
+    }
+
+    /// Get the orientation of the field.
+    pub fn orientation(&self) -> &S {
+        &self.orientation
     }
 }
 
@@ -235,9 +241,9 @@ impl<S: Spin> Default for Field<S> {
 impl<S: Spin> Sum<S> for Field<S> {
     fn sum<I: Iterator<Item = S>>(iter: I) -> Self {
         iter.fold(Field::zero(), |acc, i| {
-            let px = acc.magnitude * acc.direction.sx() + i.sx();
-            let py = acc.magnitude * acc.direction.sy() + i.sy();
-            let pz = acc.magnitude * acc.direction.sz() + i.sz();
+            let px = acc.magnitude * acc.orientation.sx() + i.sx();
+            let py = acc.magnitude * acc.orientation.sy() + i.sy();
+            let pz = acc.magnitude * acc.orientation.sz() + i.sz();
             S::from_projections(px, py, pz)
         })
     }
@@ -327,7 +333,7 @@ mod tests {
         let state = State::<IsingSpin>::up_with_size(10);
         let mag = state.magnetization();
         assert_eq!(mag.magnitude(), 10.0);
-        assert_eq!(mag.direction, IsingSpin::up());
+        assert_eq!(mag.orientation, IsingSpin::up());
     }
 
     #[test]

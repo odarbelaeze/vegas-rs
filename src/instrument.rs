@@ -24,7 +24,7 @@ where
     /// Hook called when a relaxation starts.
     fn on_relax_start(
         &mut self,
-        _thermostat: &Thermostat,
+        _thermostat: &Thermostat<S>,
         _hamiltonian: &H,
         _state: &State<S>,
     ) -> InstrumentResult<()> {
@@ -39,7 +39,7 @@ where
     /// Hook called when a measurement starts.
     fn on_measure_start(
         &mut self,
-        _thermostat: &Thermostat,
+        _thermostat: &Thermostat<S>,
         _hamiltonian: &H,
         _state: &State<S>,
     ) -> InstrumentResult<()> {
@@ -66,7 +66,7 @@ where
     output: Box<dyn Write>,
     energy_acc: Accumulator,
     magnetization_acc: Accumulator,
-    thermostat: Option<Thermostat>,
+    thermostat: Option<Thermostat<S>>,
     hamiltonian: Option<H>,
     phantom: PhantomData<S>,
 }
@@ -95,7 +95,7 @@ where
 {
     fn on_measure_start(
         &mut self,
-        thermostat: &Thermostat,
+        thermostat: &Thermostat<S>,
         hamiltonian: &H,
         _state: &State<S>,
     ) -> InstrumentResult<()> {
@@ -110,7 +110,7 @@ where
                 self.output,
                 "{:.16} {:.16} {:.16} {:.16} {:.16} {:.16} {:.16}",
                 thermostat.temperature(),
-                thermostat.field(),
+                thermostat.field().magnitude(),
                 self.energy_acc.mean(),
                 self.energy_acc.variance() / thermostat.temperature(),
                 self.magnetization_acc.mean(),
@@ -144,7 +144,7 @@ where
 {
     io: ObservableParquetIO,
     stage: usize,
-    thermostat: Option<Thermostat>,
+    thermostat: Option<Thermostat<S>>,
     hamiltonian: Option<H>,
     energy: Vec<f64>,
     magnetization: Vec<f64>,
@@ -176,7 +176,7 @@ where
 {
     fn on_relax_start(
         &mut self,
-        thermostat: &Thermostat,
+        thermostat: &Thermostat<S>,
         hamiltonian: &H,
         _state: &State<S>,
     ) -> InstrumentResult<()> {
@@ -207,7 +207,7 @@ where
 
     fn on_measure_start(
         &mut self,
-        thermostat: &Thermostat,
+        thermostat: &Thermostat<S>,
         hamiltonian: &H,
         _state: &State<S>,
     ) -> InstrumentResult<()> {
@@ -286,7 +286,7 @@ where
 {
     fn on_relax_start(
         &mut self,
-        _thermostat: &Thermostat,
+        _thermostat: &Thermostat<S>,
         _hamiltonian: &H,
         _state: &State<S>,
     ) -> InstrumentResult<()> {
@@ -303,7 +303,7 @@ where
 
     fn on_measure_start(
         &mut self,
-        _thermostat: &Thermostat,
+        _thermostat: &Thermostat<S>,
         _hamiltonian: &H,
         _state: &State<S>,
     ) -> InstrumentResult<()> {

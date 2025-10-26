@@ -49,10 +49,10 @@ pub trait Hamiltonian<S: Spin>: Clone {
     ///
     /// This function will panic of the index is greater than the size
     /// of the state vector (business as usual)
-    fn energy(&self, thermostat: &Thermostat, state: &State<S>, index: usize) -> f64;
+    fn energy(&self, thermostat: &Thermostat<S>, state: &State<S>, index: usize) -> f64;
 
     /// Compute the total energy of a state.
-    fn total_energy(&self, thermostat: &Thermostat, state: &State<S>) -> f64 {
+    fn total_energy(&self, thermostat: &Thermostat<S>, state: &State<S>) -> f64 {
         (0..state.len())
             .map(|i| self.energy(thermostat, state, i))
             .sum()
@@ -73,7 +73,7 @@ impl Gauge {
 }
 
 impl<S: Spin> Hamiltonian<S> for Gauge {
-    fn energy(&self, _thermostat: &Thermostat, state: &State<S>, index: usize) -> f64 {
+    fn energy(&self, _thermostat: &Thermostat<S>, state: &State<S>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         self.value
     }
@@ -105,13 +105,13 @@ impl<S> Hamiltonian<S> for UniaxialAnisotropy<S>
 where
     S: Spin,
 {
-    fn energy(&self, _thermostat: &Thermostat, state: &State<S>, index: usize) -> f64 {
+    fn energy(&self, _thermostat: &Thermostat<S>, state: &State<S>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         let s = state.at(index);
         s.dot(&self.reference).powi(2) * self.strength
     }
 
-    fn total_energy(&self, _thermostat: &Thermostat, state: &State<S>) -> f64 {
+    fn total_energy(&self, _thermostat: &Thermostat<S>, state: &State<S>) -> f64 {
         state
             .spins()
             .iter()
@@ -121,20 +121,22 @@ where
 }
 
 /// Energy resulting from a magnetic field.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ZeemanEnergy<S>
 where
     S: Spin,
 {
-    reference: S,
+    phantom: PhantomData<S>,
 }
 
 impl<S> ZeemanEnergy<S>
 where
     S: Spin,
 {
-    pub fn new(s: S) -> Self {
-        Self { reference: s }
+    pub fn new() -> Self {
+        Self {
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -142,18 +144,18 @@ impl<S> Hamiltonian<S> for ZeemanEnergy<S>
 where
     S: Spin,
 {
-    fn energy(&self, thermostat: &Thermostat, state: &State<S>, index: usize) -> f64 {
+    fn energy(&self, thermostat: &Thermostat<S>, state: &State<S>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         let s = state.at(index);
-        s.dot(&self.reference) * thermostat.field()
+        s.dot(thermostat.field().orientation()) * thermostat.field().magnitude()
     }
 
-    fn total_energy(&self, thermostat: &Thermostat, state: &State<S>) -> f64 {
-        -thermostat.field()
+    fn total_energy(&self, thermostat: &Thermostat<S>, state: &State<S>) -> f64 {
+        -thermostat.field().magnitude()
             * state
                 .spins()
                 .iter()
-                .map(|s| s.dot(&self.reference))
+                .map(|s| s.dot(thermostat.field().orientation()))
                 .sum::<f64>()
     }
 }
@@ -189,7 +191,7 @@ impl<S> Hamiltonian<S> for Exchange
 where
     S: Spin,
 {
-    fn energy(&self, _thermostat: &Thermostat, state: &State<S>, index: usize) -> f64 {
+    fn energy(&self, _thermostat: &Thermostat<S>, state: &State<S>, index: usize) -> f64 {
         debug_assert!(index < state.len());
         let site = state.at(index);
         if let Some(row) = self.exchange.outer_view(index) {
@@ -203,7 +205,7 @@ where
         }
     }
 
-    fn total_energy(&self, thermostat: &Thermostat, state: &State<S>) -> f64 {
+    fn total_energy(&self, thermostat: &Thermostat<S>, state: &State<S>) -> f64 {
         (0..state.len())
             .map(|i| self.energy(thermostat, state, i))
             .fold(0f64, |s, i| s + i)
@@ -249,7 +251,7 @@ where
     U: Hamiltonian<S>,
     V: Hamiltonian<S>,
 {
-    fn energy(&self, thermostat: &Thermostat, state: &State<S>, index: usize) -> f64 {
+    fn energy(&self, thermostat: &Thermostat<S>, state: &State<S>, index: usize) -> f64 {
         self.a.energy(thermostat, state, index) + self.b.energy(thermostat, state, index)
     }
 }

@@ -39,7 +39,7 @@ pub trait Integrator<S: Spin> {
     fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
         rng: &mut R,
-        thermostat: &Thermostat,
+        thermostat: &Thermostat<S>,
         hamiltonian: &H,
         state: State<S>,
     ) -> State<S>;
@@ -64,7 +64,7 @@ impl<S: Spin> Integrator<S> for MetropolisIntegrator {
     fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
         rng: &mut R,
-        thermostat: &Thermostat,
+        thermostat: &Thermostat<S>,
         hamiltonian: &H,
         mut state: State<S>,
     ) -> State<S> {
@@ -110,7 +110,7 @@ where
     fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
         rng: &mut R,
-        thermostat: &Thermostat,
+        thermostat: &Thermostat<S>,
         hamiltonian: &H,
         mut state: State<S>,
     ) -> State<S> {
