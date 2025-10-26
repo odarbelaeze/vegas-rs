@@ -1,14 +1,29 @@
-//! This little library should have traits and routines to build a generic
-//! atomistic Monte Carlo simulation program to deal with magnetic properties
-//! of materials.
+//! Defines spins, magnetizations, and states.
+//!
+//! Spins are the basic building blocks of the library. They represent the spin
+//! of an atom in a magnetic material. The library provides a `Spin` trait that
+//! you can implement for your own spin types.
+//!
+//! # Examples
+//!
+//! ```rust
+//! use rand::SeedableRng;
+//! use rand_pcg::Pcg64;
+//! use vegas::state::{HeisenbergSpin, IsingSpin, State, Spin};
+//! let mut rng = Pcg64::from_rng(&mut rand::rng());
+//!
+//! let ising_state = State::<IsingSpin>::rand_with_size(&mut rng, 100);
+//! let heisenberg_state = State::<HeisenbergSpin>::rand_with_size(&mut rng, 100);
+//! let ising_spin = IsingSpin::rand(&mut rng);
+//! let heisenberg_spin = HeisenbergSpin::up();
+//! ```
 
-use std::iter::Sum;
-use std::ops::Add;
-
-use rand::distr::{Distribution, Uniform};
-use rand::Rng;
-
-use super::util::marsaglia;
+use crate::util::marsaglia;
+use rand::{
+    Rng,
+    distr::{Distribution, Uniform},
+};
+use std::{iter::Sum, ops::Add};
 
 /// This trait specifies what a spin is.
 pub trait Spin: Clone + Add<Self, Output = Self::MagnetizationType> {
@@ -22,10 +37,19 @@ pub trait Spin: Clone + Add<Self, Output = Self::MagnetizationType> {
     fn down() -> Self;
 
     /// New up a random spin.
-    fn rand<T: Rng>(rng: &mut T) -> Self;
+    fn rand<R: Rng>(rng: &mut R) -> Self;
 
     /// Dot product of two spins.
     fn dot(&self, other: &Self) -> f64;
+
+    /// Projection of the spin along the x-axis.
+    fn sx(&self) -> f64;
+
+    /// Projection of the spin along the y-axis.
+    fn sy(&self) -> f64;
+
+    /// Projection of the spin along the z-axis.
+    fn sz(&self) -> f64;
 }
 
 /// This trait represents a spin which can be flipped.
@@ -70,7 +94,7 @@ impl Spin for IsingSpin {
     }
 
     /// Randomly pick up or down for an Ising spin.
-    fn rand<T: Rng>(rng: &mut T) -> Self {
+    fn rand<R: Rng>(rng: &mut R) -> Self {
         let range = Uniform::new(0f64, 1f64).expect("should always be able to create");
         let r = range.sample(rng);
         if r < 0.5f64 {
@@ -86,6 +110,25 @@ impl Spin for IsingSpin {
         match (self, other) {
             (&Up, &Up) | (&Down, &Down) => 1f64,
             _ => -1f64,
+        }
+    }
+
+    #[inline]
+    fn sx(&self) -> f64 {
+        0.0
+    }
+
+    #[inline]
+    fn sy(&self) -> f64 {
+        0.0
+    }
+
+    #[inline]
+    fn sz(&self) -> f64 {
+        use self::IsingSpin::{Down, Up};
+        match self {
+            Up => 1f64,
+            Down => -1f64,
         }
     }
 }
@@ -202,7 +245,7 @@ impl Spin for HeisenbergSpin {
         HeisenbergSpin([0f64, 0f64, -1f64])
     }
 
-    fn rand<T: Rng>(rng: &mut T) -> Self {
+    fn rand<R: Rng>(rng: &mut R) -> Self {
         let (x, y, z) = marsaglia(rng);
         HeisenbergSpin([x, y, z])
     }
@@ -216,6 +259,21 @@ impl Spin for HeisenbergSpin {
             .zip(_other.iter())
             .map(|(a, b)| a * b)
             .fold(0f64, |sum, i| sum + i)
+    }
+
+    #[inline]
+    fn sx(&self) -> f64 {
+        self.0[0]
+    }
+
+    #[inline]
+    fn sy(&self) -> f64 {
+        self.0[1]
+    }
+
+    #[inline]
+    fn sz(&self) -> f64 {
+        self.0[2]
     }
 }
 
@@ -285,37 +343,37 @@ impl Add<HeisenbergSpin> for HeisenbergMagnetization {
 
 /// A state of spins.
 #[derive(Clone)]
-pub struct State<T: Spin>(Vec<T>);
+pub struct State<S: Spin>(Vec<S>);
 
-impl<T: Spin> State<T> {
+impl<S: Spin> State<S> {
     /// Create a new state with a given number of spins pointing down.
     pub fn down_with_size(n: usize) -> Self {
-        State::<T>((0..n).map(|_| T::down()).collect())
+        State::<S>((0..n).map(|_| S::down()).collect())
     }
 
     /// Create a new state with a given number of spins pointing up.
     pub fn up_with_size(n: usize) -> Self {
-        State::<T>((0..n).map(|_| T::up()).collect())
+        State::<S>((0..n).map(|_| S::up()).collect())
     }
 
     /// Create a new state with a given number of random spins.
     pub fn rand_with_size<R: Rng>(rng: &mut R, n: usize) -> Self {
-        State::<T>((0..n).map(|_| T::rand(rng)).collect())
+        State::<S>((0..n).map(|_| S::rand(rng)).collect())
     }
 
     /// View the spins in a state.
-    pub fn spins(&self) -> &Vec<T> {
-        let State::<T>(items) = self;
+    pub fn spins(&self) -> &Vec<S> {
+        let State::<S>(items) = self;
         items
     }
 
     /// View a particular spin in a state.
-    pub fn at(&self, index: usize) -> &T {
+    pub fn at(&self, index: usize) -> &S {
         &self.spins()[index]
     }
 
     /// Set a particular spin in a state.
-    pub fn set_at(&mut self, index: usize, spin: T) {
+    pub fn set_at(&mut self, index: usize, spin: S) {
         self.0[index] = spin;
     }
 
@@ -330,10 +388,10 @@ impl<T: Spin> State<T> {
     }
 
     /// Get the magnetization of a state.
-    pub fn magnetization(&self) -> T::MagnetizationType
+    pub fn magnetization(&self) -> S::MagnetizationType
     where
-        T: Spin + Add<T, Output = T::MagnetizationType> + Clone,
-        T::MagnetizationType: Default + Sum<T>,
+        S: Spin + Add<S, Output = S::MagnetizationType> + Clone,
+        S::MagnetizationType: Default + Sum<S>,
     {
         self.spins().iter().cloned().sum()
     }
@@ -341,11 +399,7 @@ impl<T: Spin> State<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::HeisenbergSpin;
-    use super::IsingMagnetization;
-    use super::IsingSpin;
-    use super::Spin;
-    use super::State;
+    use crate::state::{HeisenbergSpin, IsingMagnetization, IsingSpin, Spin, State};
     use rand::SeedableRng;
     use rand_pcg::Pcg64;
 

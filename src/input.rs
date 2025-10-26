@@ -1,18 +1,20 @@
 //! Input for a generic simulation.
 
-use clap::ValueEnum;
-use rand::Rng;
-use serde::{Deserialize, Serialize};
-use vegas_lattice::Lattice;
-
 use crate::{
-    error::Result,
-    hamiltonian::Exchange,
+    energy::{Exchange, Hamiltonian, ZeemanEnergy},
+    error::VegasResult,
+    instrument::{Instrument, RawStatSensor, StatSensor, StateSensor},
     integrator::MetropolisIntegrator,
     machine::Machine,
     program::{CoolDown, HysteresisLoop, Program, Relax},
     state::{HeisenbergSpin, IsingSpin, Spin, State},
+    thermostat::Thermostat,
 };
+use clap::ValueEnum;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+use std::{io::stdout, path::PathBuf};
+use vegas_lattice::Lattice;
 
 #[derive(Debug, Default, Clone, ValueEnum, Serialize, Deserialize)]
 pub enum Model {
@@ -94,6 +96,36 @@ pub struct Sample {
     pub pbc: PeriodicBoundaryConditions,
 }
 
+/// State output for a simulation.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct StateOutput {
+    /// Write the states to a parquet file
+    pub path: PathBuf,
+    /// Frequency of writing states
+    pub frequency: usize,
+}
+
+/// Output for a generic simulation.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Output {
+    /// Write the raw data into the given file
+    pub raw: Option<PathBuf>,
+    /// Write states to a parquet file
+    pub state: Option<StateOutput>,
+}
+
+impl Default for Output {
+    fn default() -> Self {
+        Self {
+            raw: Some("./output.parquet".into()),
+            state: Some(StateOutput {
+                path: "./state.parquet".into(),
+                frequency: 1000,
+            }),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "program")]
 pub enum Step {
@@ -120,41 +152,90 @@ pub struct Input {
     pub sample: Sample,
     /// Steps to take
     pub steps: Vec<Step>,
+    /// Output for the simulation
+    pub output: Option<Output>,
 }
 
 impl Default for Input {
     fn default() -> Self {
         Input {
-            model: Model::default(),
-            sample: Sample::default(),
+            model: Default::default(),
+            sample: Default::default(),
             steps: vec![
                 Step::Relax(Relax::default()),
                 Step::CoolDown(CoolDown::default()),
             ],
+            output: Some(Output::default()),
         }
     }
 }
 
-impl Input {
-    /// Create a new input.
-    pub fn new(model: Model, sample: Sample, steps: Vec<Step>) -> Self {
-        Input {
-            model,
-            sample,
-            steps,
+pub struct InputBuilder {
+    model: Option<Model>,
+    sample: Option<Sample>,
+    steps: Option<Vec<Step>>,
+    output: Option<Output>,
+}
+
+impl InputBuilder {
+    pub fn new() -> Self {
+        InputBuilder {
+            model: None,
+            sample: None,
+            steps: None,
+            output: None,
         }
     }
 
-    fn run_with_spin<T: Spin, R: Rng>(&self, rng: &mut R) -> Result<()> {
+    pub fn model(mut self, model: Model) -> Self {
+        self.model = Some(model);
+        self
+    }
+
+    pub fn sample(mut self, sample: Sample) -> Self {
+        self.sample = Some(sample);
+        self
+    }
+
+    pub fn steps(mut self, steps: Vec<Step>) -> Self {
+        self.steps = Some(steps);
+        self
+    }
+
+    pub fn output(mut self, output: Output) -> Self {
+        self.output = Some(output);
+        self
+    }
+
+    pub fn build(self) -> Input {
+        Input {
+            model: self.model.unwrap_or_default(),
+            sample: self.sample.unwrap_or_default(),
+            steps: self.steps.unwrap_or_default(),
+            output: self.output,
+        }
+    }
+}
+
+impl Default for InputBuilder {
+    fn default() -> Self {
+        InputBuilder::new()
+    }
+}
+
+impl Input {
+    fn run_with_spin<S: Spin + 'static, R: Rng>(&self, rng: &mut R) -> VegasResult<()> {
         let lattice = self.lattice();
         let integrator = MetropolisIntegrator::new();
-        let hamiltonian = Exchange::from_lattice(&lattice);
+        let hamiltonian =
+            hamiltonian!(Exchange::from_lattice(&lattice), ZeemanEnergy::new(S::up()));
+        let instruments = self.instruments::<_, S>()?;
         let mut machine = Machine::new(
-            2.8,
-            0.0,
+            Thermostat::new(2.8, 0.0),
             hamiltonian,
             integrator,
-            State::<T>::rand_with_size(rng, lattice.sites().len()),
+            instruments,
+            State::<S>::rand_with_size(rng, lattice.sites().len()),
         );
         for program in self.steps.iter() {
             match program {
@@ -172,8 +253,7 @@ impl Input {
         Ok(())
     }
 
-    /// Get the lattice.
-    pub fn lattice(&self) -> Lattice {
+    fn lattice(&self) -> Lattice {
         let unitcell = match &self.sample.unitcell {
             UnitCell::Name(name) => match name {
                 UnitCellName::SC => Lattice::sc(1.0),
@@ -201,7 +281,28 @@ impl Input {
         lattice
     }
 
-    pub fn run<R: Rng>(&self, rng: &mut R) -> Result<()> {
+    fn instruments<H: Hamiltonian<S> + 'static, S: Spin + 'static>(
+        &self,
+    ) -> VegasResult<Vec<Box<dyn Instrument<H, S>>>> {
+        let mut instruments: Vec<Box<dyn Instrument<_, _>>> =
+            vec![Box::new(StatSensor::<_, S>::new(Box::new(stdout())))];
+        if let Some(output) = &self.output
+            && let Some(raw_filename) = &output.raw
+        {
+            instruments.push(Box::new(RawStatSensor::<_, S>::try_new(raw_filename)?));
+        }
+        if let Some(output) = &self.output
+            && let Some(state_output) = &output.state
+        {
+            instruments.push(Box::new(StateSensor::<_, S>::try_new(
+                &state_output.path,
+                state_output.frequency,
+            )?));
+        }
+        Ok(instruments)
+    }
+
+    pub fn run<R: Rng>(&self, rng: &mut R) -> VegasResult<()> {
         match self.model {
             Model::Ising => self.run_with_spin::<IsingSpin, _>(rng),
             Model::Heisenberg => self.run_with_spin::<HeisenbergSpin, _>(rng),

@@ -1,25 +1,27 @@
-use std::{
-    fs::File,
-    io::Read,
-    path::{Path, PathBuf},
-};
+//! A command line interface for running Vegas simulations and benchmarks.
 
 use clap::{Parser, Subcommand};
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
-use vegas_lattice::Lattice;
-
+use std::{
+    fs::File,
+    io::{Read, stdin, stdout},
+    path::{Path, PathBuf},
+};
 use vegas::{
-    error::Result,
-    hamiltonian::Exchange,
+    energy::Exchange,
+    error::{IoError, VegasResult},
     input::{Input, Model},
+    instrument::{Instrument, StatSensor},
     integrator::{MetropolisFlipIntegrator, MetropolisIntegrator},
     machine::Machine,
     program::{CoolDown, Program, Relax},
     state::{HeisenbergSpin, IsingSpin, State},
+    thermostat::Thermostat,
 };
+use vegas_lattice::Lattice;
 
-fn bench(lattice: Lattice, model: Model) -> Result<()> {
+fn bench(lattice: Lattice, model: Model) -> VegasResult<()> {
     let hamiltonian = Exchange::from_lattice(&lattice);
     match model {
         Model::Ising => {
@@ -27,21 +29,29 @@ fn bench(lattice: Lattice, model: Model) -> Result<()> {
             let mut rng = Pcg64::from_rng(&mut rand::rng());
             let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
-            let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
-            program.run(&mut rng, &mut machine)
+            let thermostat = Thermostat::new(2.8, 0.0);
+            let instruments: Vec<Box<dyn Instrument<_, _>>> =
+                vec![Box::new(StatSensor::<_, _>::new(Box::new(stdout())))];
+            let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);
+            program.run(&mut rng, &mut machine)?;
+            Ok(())
         }
         Model::Heisenberg => {
             let program = CoolDown::default().set_max_temperature(2.5);
             let mut rng = Pcg64::from_rng(&mut rand::rng());
             let state = State::<HeisenbergSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
-            let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
-            program.run(&mut rng, &mut machine)
+            let thermostat = Thermostat::new(2.8, 0.0);
+            let instruments: Vec<Box<dyn Instrument<_, _>>> =
+                vec![Box::new(StatSensor::<_, _>::new(Box::new(stdout())))];
+            let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);
+            program.run(&mut rng, &mut machine)?;
+            Ok(())
         }
     }
 }
 
-fn bench_ising(length: usize) -> Result<()> {
+fn bench_ising(length: usize) -> VegasResult<()> {
     let lattice = Lattice::sc(1.0).expand_x(length).expand_y(length).drop_z();
     let hamiltonian = Exchange::from_lattice(&lattice);
     let cool_rate = 0.05;
@@ -54,20 +64,24 @@ fn bench_ising(length: usize) -> Result<()> {
     let mut rng = Pcg64::from_rng(&mut rand::rng());
     let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
     let integrator = MetropolisFlipIntegrator::new();
-    let mut machine = Machine::new(2.8, 0.0, hamiltonian, integrator, state);
+    let thermostat = Thermostat::new(2.8, 0.0);
+    let instruments: Vec<Box<dyn Instrument<_, _>>> =
+        vec![Box::new(StatSensor::<_, _>::new(Box::new(stdout())))];
+    let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);
     relax.run(&mut rng, &mut machine)?;
-    curie.run(&mut rng, &mut machine)
+    curie.run(&mut rng, &mut machine)?;
+    Ok(())
 }
 
-fn bench_model(model: Model, length: usize) -> Result<()> {
+fn bench_model(model: Model, length: usize) -> VegasResult<()> {
     let lattice = Lattice::sc(1.0).expand_all(length);
     bench(lattice, model)
 }
 
-fn bench_lattice(model: Model, input: &Path) -> Result<()> {
+fn bench_lattice(model: Model, input: &Path) -> VegasResult<()> {
     let mut data = String::new();
-    let mut file = File::open(input)?;
-    file.read_to_string(&mut data)?;
+    let mut file = File::open(input).map_err(IoError::from)?;
+    file.read_to_string(&mut data).map_err(IoError::from)?;
     let lattice: Lattice = data.parse()?;
 
     println!("# Successfuly read the lattice!");
@@ -77,23 +91,27 @@ fn bench_lattice(model: Model, input: &Path) -> Result<()> {
     bench(lattice, model)
 }
 
-fn run_input(input: PathBuf) -> Result<()> {
+fn run_input(input: PathBuf) -> VegasResult<()> {
     let mut data = String::new();
-    let mut file = File::open(input)?;
-    file.read_to_string(&mut data)?;
+    if input == PathBuf::from("-") {
+        stdin().read_to_string(&mut data).map_err(IoError::from)?;
+    } else {
+        let mut file = File::open(input).map_err(IoError::from)?;
+        file.read_to_string(&mut data).map_err(IoError::from)?;
+    };
     let input: Input = toml::from_str(&data)?;
     let mut rng = Pcg64::from_rng(&mut rand::rng());
     input.run(&mut rng)
 }
 
-fn print_default_input() -> Result<()> {
+fn print_default_input() -> VegasResult<()> {
     let input = Input::default();
     let input = toml::to_string_pretty(&input)?;
     println!("{}", input);
     Ok(())
 }
 
-fn check_error(res: Result<()>) {
+fn check_error(res: VegasResult<()>) {
     if let Err(e) = res {
         eprintln!("Error: {}", e);
         std::process::exit(1);

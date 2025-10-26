@@ -5,3 +5,4 @@ data*
 .ropeproject
 Cargo.lock
 .idea
+*.parquet
