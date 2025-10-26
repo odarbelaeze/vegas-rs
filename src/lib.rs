@@ -105,7 +105,7 @@
 //!     integrator::MetropolisIntegrator,
 //!     machine::Machine,
 //!     program::{CoolDown, Program, Relax},
-//!     state::{IsingSpin, State},
+//!     state::{Field, IsingSpin, State},
 //!     thermostat::Thermostat,
 //! };
 //!
@@ -118,7 +118,7 @@
 //! let mut rng = Pcg64::from_rng(&mut rand::rng());
 //! let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
 //! let integrator = MetropolisIntegrator::new();
-//! let thermostat = Thermostat::new(2.8, 0.0);
+//! let thermostat = Thermostat::new(2.8, Field::zero());
 //! let instruments: Vec<Box<dyn Instrument<_, _>>> =
 //!     vec![Box::new(StatSensor::<_, _>::new(Box::new(std::io::stdout())))];
 //! let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);

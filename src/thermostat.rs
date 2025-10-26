@@ -6,9 +6,10 @@
 //!
 //! ```rust
 //! use vegas::thermostat::Thermostat;
+//! use vegas::state::{Field, IsingSpin};
 //!
 //! // Create a thermostat with a reduced temperature of 3 and an external field of 0.5.
-//! let thermostat = Thermostat::new(3.0, 0.5);
+//! let thermostat = Thermostat::new(3.0, Field::new(IsingSpin::Up, 0.5));
 //! ```
 
 use crate::state::{Field, Spin};

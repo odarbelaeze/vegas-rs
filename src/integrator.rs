@@ -10,14 +10,14 @@
 //! use vegas::{
 //!     energy::{Gauge, Hamiltonian},
 //!     integrator::{Integrator, MetropolisFlipIntegrator},
-//!     state::{Spin, IsingSpin, State},
+//!     state::{Field, Spin, IsingSpin, State},
 //!     thermostat::Thermostat,
 //! };
 //! use rand::thread_rng;
 //!
 //! // Define a Hamiltonian (e.g., Gauge Hamiltonian).
 //! let hamiltonian = Gauge::new(1.0);
-//! let thermostat = Thermostat::new(2.5, 0.0);
+//! let thermostat = Thermostat::new(2.5, Field::zero());
 //! let integrator = MetropolisFlipIntegrator::new();
 //! let mut rng = thread_rng();
 //! let state: State<IsingSpin> = State::rand_with_size(&mut rng, 100);

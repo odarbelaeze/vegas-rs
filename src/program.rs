@@ -21,19 +21,19 @@
 //!    integrator::MetropolisIntegrator,
 //!    machine::Machine,
 //!    program::{CoolDown, Program},
-//!    state::{IsingSpin, State, Spin},
+//!    state::{Field, IsingSpin, State, Spin},
 //!    thermostat::Thermostat,
 //! };
 //!
 //! // Define a Hamiltonian (e.g., Zeeman Energy).
-//! let hamiltonian = ZeemanEnergy::new(IsingSpin::Up);
+//! let hamiltonian = ZeemanEnergy::new();
 //! let program = CoolDown::default()
 //!    .set_relax(10)
 //!    .set_steps(10);
 //! let mut rng = Pcg64::from_rng(&mut rand::rng());
 //! let state = State::<IsingSpin>::rand_with_size(&mut rng, 100);
 //! let integrator = MetropolisIntegrator::new();
-//! let thermostat = Thermostat::new(2.8, 0.0);
+//! let thermostat = Thermostat::new(2.8, Field::zero());
 //! let instruments = Vec::new();
 //! let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);
 //! let _ = program.run(&mut rng, &mut machine);

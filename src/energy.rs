@@ -293,7 +293,7 @@ macro_rules! hamiltonian {
 mod tests {
     use crate::{
         energy::{Compound, Gauge, Hamiltonian, UniaxialAnisotropy, ZeemanEnergy},
-        state::{HeisenbergSpin, Spin, State},
+        state::{Field, HeisenbergSpin, Spin, State},
         thermostat::Thermostat,
     };
 
@@ -317,18 +317,42 @@ mod tests {
     fn test_zeeman_energy() {
         let ups = State::<HeisenbergSpin>::up_with_size(10);
         let downs = State::<HeisenbergSpin>::down_with_size(10);
-        let anisotropy = ZeemanEnergy::new(HeisenbergSpin::up());
-        assert!(anisotropy.total_energy(&Thermostat::new(0.0, 1.0), &ups) + 10.0 < 1e-12);
-        assert!(anisotropy.total_energy(&Thermostat::new(0.0, 1.0), &downs) - 10.0 < 1e-12)
+        let anisotropy = ZeemanEnergy::new();
+        assert!(
+            anisotropy.total_energy(
+                &Thermostat::new(0.0, Field::new(HeisenbergSpin::up(), 1.0)),
+                &ups
+            ) + 10.0
+                < 1e-12
+        );
+        assert!(
+            anisotropy.total_energy(
+                &Thermostat::new(0.0, Field::new(HeisenbergSpin::up(), 1.0)),
+                &downs
+            ) - 10.0
+                < 1e-12
+        )
     }
 
     #[test]
     fn test_zeeman_energy_multiplies_correctly() {
         let ups = State::<HeisenbergSpin>::up_with_size(10);
         let downs = State::<HeisenbergSpin>::down_with_size(10);
-        let anisotropy = ZeemanEnergy::new(HeisenbergSpin::up());
-        assert!(anisotropy.total_energy(&Thermostat::new(0.0, 2.0), &ups) + 20.0 < 1e-12);
-        assert!(anisotropy.total_energy(&Thermostat::new(0.0, 2.0), &downs) - 20.0 < 1e-12)
+        let anisotropy = ZeemanEnergy::new();
+        assert!(
+            anisotropy.total_energy(
+                &Thermostat::new(0.0, Field::new(HeisenbergSpin::up(), 2.0)),
+                &ups
+            ) + 20.0
+                < 1e-12
+        );
+        assert!(
+            anisotropy.total_energy(
+                &Thermostat::new(0.0, Field::new(HeisenbergSpin::up(), 2.0)),
+                &downs
+            ) - 20.0
+                < 1e-12
+        )
     }
 
     #[test]
