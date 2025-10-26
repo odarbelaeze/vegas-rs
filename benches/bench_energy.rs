@@ -3,7 +3,7 @@ extern crate rand;
 extern crate test;
 extern crate vegas;
 
-use vegas::hamiltonian::{Compound, Gauge, Hamiltonian, UniaxialAnisotropy};
+use vegas::energy::{Compound, Gauge, Hamiltonian, UniaxialAnisotropy};
 use vegas::state::{HeisenbergSpin, Spin, State};
 use vegas::thermostat::Thermostat;
 

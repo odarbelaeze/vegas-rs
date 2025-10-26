@@ -1,17 +1,14 @@
+use clap::{Parser, Subcommand};
+use rand::SeedableRng;
+use rand_pcg::Pcg64;
 use std::{
     fs::File,
     io::{Read, stdin, stdout},
     path::{Path, PathBuf},
 };
-
-use clap::{Parser, Subcommand};
-use rand::SeedableRng;
-use rand_pcg::Pcg64;
-use vegas_lattice::Lattice;
-
 use vegas::{
-    error::{IOError, Result},
-    hamiltonian::Exchange,
+    energy::Exchange,
+    error::{IoError, VegasResult},
     input::{Input, Model},
     instrument::{Instrument, StatSensor},
     integrator::{MetropolisFlipIntegrator, MetropolisIntegrator},
@@ -20,8 +17,9 @@ use vegas::{
     state::{HeisenbergSpin, IsingSpin, State},
     thermostat::Thermostat,
 };
+use vegas_lattice::Lattice;
 
-fn bench(lattice: Lattice, model: Model) -> Result<()> {
+fn bench(lattice: Lattice, model: Model) -> VegasResult<()> {
     let hamiltonian = Exchange::from_lattice(&lattice);
     match model {
         Model::Ising => {
@@ -51,7 +49,7 @@ fn bench(lattice: Lattice, model: Model) -> Result<()> {
     }
 }
 
-fn bench_ising(length: usize) -> Result<()> {
+fn bench_ising(length: usize) -> VegasResult<()> {
     let lattice = Lattice::sc(1.0).expand_x(length).expand_y(length).drop_z();
     let hamiltonian = Exchange::from_lattice(&lattice);
     let cool_rate = 0.05;
@@ -73,15 +71,15 @@ fn bench_ising(length: usize) -> Result<()> {
     Ok(())
 }
 
-fn bench_model(model: Model, length: usize) -> Result<()> {
+fn bench_model(model: Model, length: usize) -> VegasResult<()> {
     let lattice = Lattice::sc(1.0).expand_all(length);
     bench(lattice, model)
 }
 
-fn bench_lattice(model: Model, input: &Path) -> Result<()> {
+fn bench_lattice(model: Model, input: &Path) -> VegasResult<()> {
     let mut data = String::new();
-    let mut file = File::open(input).map_err(IOError::from)?;
-    file.read_to_string(&mut data).map_err(IOError::from)?;
+    let mut file = File::open(input).map_err(IoError::from)?;
+    file.read_to_string(&mut data).map_err(IoError::from)?;
     let lattice: Lattice = data.parse()?;
 
     println!("# Successfuly read the lattice!");
@@ -91,27 +89,27 @@ fn bench_lattice(model: Model, input: &Path) -> Result<()> {
     bench(lattice, model)
 }
 
-fn run_input(input: PathBuf) -> Result<()> {
+fn run_input(input: PathBuf) -> VegasResult<()> {
     let mut data = String::new();
     if input == PathBuf::from("-") {
-        stdin().read_to_string(&mut data).map_err(IOError::from)?;
+        stdin().read_to_string(&mut data).map_err(IoError::from)?;
     } else {
-        let mut file = File::open(input).map_err(IOError::from)?;
-        file.read_to_string(&mut data).map_err(IOError::from)?;
+        let mut file = File::open(input).map_err(IoError::from)?;
+        file.read_to_string(&mut data).map_err(IoError::from)?;
     };
     let input: Input = toml::from_str(&data)?;
     let mut rng = Pcg64::from_rng(&mut rand::rng());
     input.run(&mut rng)
 }
 
-fn print_default_input() -> Result<()> {
+fn print_default_input() -> VegasResult<()> {
     let input = Input::default();
     let input = toml::to_string_pretty(&input)?;
     println!("{}", input);
     Ok(())
 }
 
-fn check_error(res: Result<()>) {
+fn check_error(res: VegasResult<()>) {
     if let Err(e) = res {
         eprintln!("Error: {}", e);
         std::process::exit(1);

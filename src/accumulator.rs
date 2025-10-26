@@ -1,3 +1,24 @@
+//! A simple accumulator for statistical measurements.
+//!
+//! This module provides an `Accumulator` struct that can be used to collect
+//! measurements and compute statistical properties such as mean, variance, and
+//! Binder cumulant.
+//!
+//! # Example
+//!
+//! ```rust
+//! use vegas::accumulator::Accumulator;
+//!
+//! let mut acc = Accumulator::new();
+//! acc.collect(1.0);
+//! acc.collect(2.0);
+//! acc.collect(3.0);
+//!
+//! println!("Mean: {}", acc.mean());
+//! println!("Variance: {}", acc.variance());
+//! println!("Binder Cumulant: {}", acc.binder_cumulant());
+//! ```
+
 /// An accumulator helps to compute statistical properties of a stream of measurements.
 pub struct Accumulator {
     sum: f64,

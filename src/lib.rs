@@ -99,7 +99,7 @@
 //! use vegas_lattice::Lattice;
 //!
 //! use vegas::{
-//!     hamiltonian::Exchange,
+//!     energy::Exchange,
 //!     input::{Input, Model},
 //!     instrument::{Instrument, StatSensor},
 //!     integrator::MetropolisIntegrator,
@@ -111,7 +111,10 @@
 //!
 //! let lattice = Lattice::sc(1.0).expand_x(10).expand_y(10).drop_z();
 //! let hamiltonian = Exchange::from_lattice(&lattice);
-//! let program = CoolDown::default().set_max_temperature(5.0);
+//! let program = CoolDown::default()
+//!     .set_max_temperature(5.0)
+//!     .set_steps(10)
+//!     .set_relax(10);
 //! let mut rng = Pcg64::from_rng(&mut rand::rng());
 //! let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
 //! let integrator = MetropolisIntegrator::new();
@@ -123,14 +126,14 @@
 //! ```
 
 #[macro_use]
-pub mod hamiltonian;
+pub mod energy;
 
-mod accumulator;
+pub mod accumulator;
 pub mod error;
 pub mod input;
 pub mod instrument;
 pub mod integrator;
-mod io;
+pub mod io;
 pub mod machine;
 pub mod program;
 pub mod state;

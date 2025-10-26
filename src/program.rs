@@ -1,15 +1,14 @@
 //! Programs to run on samples.
 
-use rand::Rng;
-use serde::{Deserialize, Serialize};
-
 use crate::{
+    energy::Hamiltonian,
     error::{ProgramError, ProgramResult},
-    hamiltonian::Hamiltonian,
     integrator::Integrator,
     machine::Machine,
     state::Spin,
 };
+use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 /// A program is a sequence of steps that can be run on a system.
 pub trait Program {

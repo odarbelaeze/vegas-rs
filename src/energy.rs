@@ -1,12 +1,41 @@
 //! This module contains the energy components of the system.
 //!
-//! Energy components are parts of the Hamiltonian that can be aggregated.
+//! An energy component is anything that can compute the energy of a given
+//! site for a given state.
+//!
+//!! The module provides several built-in energy components, such as
+//! `Gauge`, `UniaxialAnisotropy`, `ZeemanEnergy`, and `Exchange`.
+//!
+//! It also provides a `Compound` energy component that allows you to
+//! combine multiple energy components into a single one. The compound
+//! energy component computes the total energy by summing the energies
+//! of its constituent components. Furthermore, a convenient macro
+//! `hamiltonian!` is provided to easily build complex hamiltonians by
+//! combining multiple energy components.
+//!
+//! # Example
+//!
+//! ```rust
+//! use vegas::{hamiltonian, energy::{Hamiltonian, Gauge, UniaxialAnisotropy}};
+//! use vegas::state::{HeisenbergSpin, State, Spin};
+//! use vegas::thermostat::Thermostat;
+//!
+//! let state = State::<HeisenbergSpin>::up_with_size(10);
+//! let hamiltonian = hamiltonian!(
+//!    Gauge::new(1.0),
+//!    UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0)
+//! );
+//! let thermostat = Thermostat::near_zero();
+//! let total_energy = hamiltonian.total_energy(&thermostat, &state);
+//! println!("Total energy: {}", total_energy);
+//! ```
 
-use crate::state::{Spin, State};
-use crate::thermostat::Thermostat;
+use crate::{
+    state::{Spin, State},
+    thermostat::Thermostat,
+};
 use sprs::{CsMat, TriMat};
-use std::iter::Iterator;
-use std::marker::PhantomData;
+use std::{iter::Iterator, marker::PhantomData};
 use vegas_lattice::Lattice;
 
 /// A trait that represents an energy component of the system.
@@ -136,10 +165,12 @@ pub struct Exchange {
 }
 
 impl Exchange {
-    pub fn new(exc: CsMat<f64>) -> Self {
-        Self { exchange: exc }
+    /// Create a new exchange energy from a sparse matrix.
+    pub fn new(exchange: CsMat<f64>) -> Self {
+        Self { exchange }
     }
 
+    /// Create a new exchange energy from a lattice.
     pub fn from_lattice(lattice: &Lattice) -> Self {
         let nsites = lattice.sites().len();
         let mut mat = TriMat::<f64>::new((nsites, nsites));
@@ -202,6 +233,7 @@ where
     U: Hamiltonian<S>,
     V: Hamiltonian<S>,
 {
+    /// Create a new compound energy from two energy components.
     pub fn new(a: U, b: V) -> Self {
         Self {
             a,
@@ -227,9 +259,9 @@ where
 /// Examples:
 ///
 /// ```
-/// #[macro_use] extern crate vegas;
+/// use vegas::hamiltonian;
 /// use vegas::state::{Spin, HeisenbergSpin};
-/// use vegas::hamiltonian::{Gauge, UniaxialAnisotropy};
+/// use vegas::energy::{Gauge, UniaxialAnisotropy};
 /// fn main() {
 ///     let _hamiltonian =  hamiltonian!(
 ///         UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0),
@@ -249,7 +281,7 @@ macro_rules! hamiltonian {
         $I
         );
     ($I: expr, $J: expr) => (
-        $crate::hamiltonian::Compound::new($I, $J)
+        $crate::energy::Compound::new($I, $J)
         );
     ($I: expr, $J: expr, $($K: expr),+) => (
         hamiltonian!(@flatten hamiltonian!($I, $J), $($K,)+)
@@ -258,8 +290,8 @@ macro_rules! hamiltonian {
 
 #[cfg(test)]
 mod tests {
-    use super::{Compound, Gauge, Hamiltonian, UniaxialAnisotropy, ZeemanEnergy};
     use crate::{
+        energy::{Compound, Gauge, Hamiltonian, UniaxialAnisotropy, ZeemanEnergy},
         state::{HeisenbergSpin, Spin, State},
         thermostat::Thermostat,
     };
@@ -287,6 +319,15 @@ mod tests {
         let anisotropy = ZeemanEnergy::new(HeisenbergSpin::up());
         assert!(anisotropy.total_energy(&Thermostat::new(0.0, 1.0), &ups) + 10.0 < 1e-12);
         assert!(anisotropy.total_energy(&Thermostat::new(0.0, 1.0), &downs) - 10.0 < 1e-12)
+    }
+
+    #[test]
+    fn test_zeeman_energy_multiplies_correctly() {
+        let ups = State::<HeisenbergSpin>::up_with_size(10);
+        let downs = State::<HeisenbergSpin>::down_with_size(10);
+        let anisotropy = ZeemanEnergy::new(HeisenbergSpin::up());
+        assert!(anisotropy.total_energy(&Thermostat::new(0.0, 2.0), &ups) + 20.0 < 1e-12);
+        assert!(anisotropy.total_energy(&Thermostat::new(0.0, 2.0), &downs) - 20.0 < 1e-12)
     }
 
     #[test]

@@ -18,13 +18,12 @@
 //! let heisenberg_spin = HeisenbergSpin::up();
 //! ```
 
-use std::iter::Sum;
-use std::ops::Add;
-
-use rand::Rng;
-use rand::distr::{Distribution, Uniform};
-
 use crate::util::marsaglia;
+use rand::{
+    Rng,
+    distr::{Distribution, Uniform},
+};
+use std::{iter::Sum, ops::Add};
 
 /// This trait specifies what a spin is.
 pub trait Spin: Clone + Add<Self, Output = Self::MagnetizationType> {
@@ -400,11 +399,7 @@ impl<S: Spin> State<S> {
 
 #[cfg(test)]
 mod tests {
-    use super::HeisenbergSpin;
-    use super::IsingMagnetization;
-    use super::IsingSpin;
-    use super::Spin;
-    use super::State;
+    use crate::state::{HeisenbergSpin, IsingMagnetization, IsingSpin, Spin, State};
     use rand::SeedableRng;
     use rand_pcg::Pcg64;
 

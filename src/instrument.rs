@@ -1,15 +1,14 @@
 //! Instrument module for hooking into the state of the simulation.
 
-use std::{io::Write, marker::PhantomData, path::Path};
-
 use crate::{
     accumulator::Accumulator,
-    error::{IOResult, InstrumentResult},
-    hamiltonian::Hamiltonian,
+    energy::Hamiltonian,
+    error::{InstrumentResult, IoResult},
     io::{ObservableParquetIO, StateParquetIO},
     state::{Magnetization, Spin, State},
     thermostat::Thermostat,
 };
+use std::{io::Write, marker::PhantomData, path::Path};
 
 /// An instrument allows to hook into the simulation at various points.
 pub trait Instrument<H, S>
@@ -139,6 +138,7 @@ where
     S: Spin,
 {
     io: ObservableParquetIO,
+    stage: usize,
     thermostat: Option<Thermostat>,
     hamiltonian: Option<H>,
     energy: Vec<f64>,
@@ -151,9 +151,10 @@ where
     H: Hamiltonian<S>,
     S: Spin,
 {
-    pub fn try_new<P: AsRef<Path>>(path: P) -> IOResult<Self> {
+    pub fn try_new<P: AsRef<Path>>(path: P) -> IoResult<Self> {
         Ok(Self {
             io: ObservableParquetIO::try_new(path)?,
+            stage: 0,
             thermostat: None,
             hamiltonian: None,
             energy: Vec::new(),
@@ -183,9 +184,15 @@ where
 
     fn on_relax_end(&mut self) -> InstrumentResult<()> {
         if let Some(thermostat) = &self.thermostat {
-            self.io
-                .write(thermostat, &self.energy, &self.magnetization, true)?;
+            self.io.write(
+                true,
+                self.stage,
+                thermostat,
+                &self.energy,
+                &self.magnetization,
+            )?;
         }
+        self.stage += 1;
         self.hamiltonian = None;
         self.thermostat = None;
         self.energy.clear();
@@ -210,9 +217,15 @@ where
     /// Hook called when a measurement ends.
     fn on_measure_end(&mut self) -> InstrumentResult<()> {
         if let Some(thermostat) = &self.thermostat {
-            self.io
-                .write(thermostat, &self.energy, &self.magnetization, false)?;
+            self.io.write(
+                false,
+                self.stage,
+                thermostat,
+                &self.energy,
+                &self.magnetization,
+            )?;
         }
+        self.stage += 1;
         self.hamiltonian = None;
         self.thermostat = None;
         self.energy.clear();
@@ -251,7 +264,7 @@ where
     H: Hamiltonian<S>,
     S: Spin,
 {
-    pub fn try_new<P: AsRef<Path>>(path: P, frequency: usize) -> IOResult<Self> {
+    pub fn try_new<P: AsRef<Path>>(path: P, frequency: usize) -> IoResult<Self> {
         Ok(Self {
             io: StateParquetIO::try_new(path)?,
             frequency,

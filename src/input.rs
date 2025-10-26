@@ -1,15 +1,8 @@
 //! Input for a generic simulation.
 
-use std::{io::stdout, path::PathBuf};
-
-use clap::ValueEnum;
-use rand::Rng;
-use serde::{Deserialize, Serialize};
-use vegas_lattice::Lattice;
-
 use crate::{
-    error::Result,
-    hamiltonian::{Exchange, Hamiltonian, ZeemanEnergy},
+    energy::{Exchange, Hamiltonian, ZeemanEnergy},
+    error::VegasResult,
     instrument::{Instrument, RawStatSensor, StatSensor, StateSensor},
     integrator::MetropolisIntegrator,
     machine::Machine,
@@ -17,6 +10,11 @@ use crate::{
     state::{HeisenbergSpin, IsingSpin, Spin, State},
     thermostat::Thermostat,
 };
+use clap::ValueEnum;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+use std::{io::stdout, path::PathBuf};
+use vegas_lattice::Lattice;
 
 #[derive(Debug, Default, Clone, ValueEnum, Serialize, Deserialize)]
 pub enum Model {
@@ -226,7 +224,7 @@ impl Default for InputBuilder {
 }
 
 impl Input {
-    fn run_with_spin<S: Spin + 'static, R: Rng>(&self, rng: &mut R) -> Result<()> {
+    fn run_with_spin<S: Spin + 'static, R: Rng>(&self, rng: &mut R) -> VegasResult<()> {
         let lattice = self.lattice();
         let integrator = MetropolisIntegrator::new();
         let hamiltonian =
@@ -285,7 +283,7 @@ impl Input {
 
     fn instruments<H: Hamiltonian<S> + 'static, S: Spin + 'static>(
         &self,
-    ) -> Result<Vec<Box<dyn Instrument<H, S>>>> {
+    ) -> VegasResult<Vec<Box<dyn Instrument<H, S>>>> {
         let mut instruments: Vec<Box<dyn Instrument<_, _>>> =
             vec![Box::new(StatSensor::<_, S>::new(Box::new(stdout())))];
         if let Some(output) = &self.output
@@ -304,7 +302,7 @@ impl Input {
         Ok(instruments)
     }
 
-    pub fn run<R: Rng>(&self, rng: &mut R) -> Result<()> {
+    pub fn run<R: Rng>(&self, rng: &mut R) -> VegasResult<()> {
         match self.model {
             Model::Ising => self.run_with_spin::<IsingSpin, _>(rng),
             Model::Heisenberg => self.run_with_spin::<HeisenbergSpin, _>(rng),

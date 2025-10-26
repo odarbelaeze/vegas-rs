@@ -1,15 +1,14 @@
 //! A machine to measure samples.
 
-use rand::Rng;
-
 use crate::{
+    energy::Hamiltonian,
     error::MachineResult,
-    hamiltonian::Hamiltonian,
     instrument::Instrument,
     integrator::Integrator,
     state::{Spin, State},
     thermostat::Thermostat,
 };
+use rand::Rng;
 
 /// A box containing the sample with a given temperature and field.
 pub struct Machine<H, I, S>
@@ -72,11 +71,11 @@ where
     }
 
     /// Relax the machine for a given number of steps.
-    pub fn relax_for<R: Rng>(&mut self, rng: &mut R, relax_steps: usize) -> MachineResult<()> {
+    pub fn relax_for<R: Rng>(&mut self, rng: &mut R, steps: usize) -> MachineResult<()> {
         for instrument in self.instruments.iter_mut() {
             instrument.on_relax_start(&self.thermostat, &self.hamiltonian, &self.state)?;
         }
-        self.run(rng, relax_steps)?;
+        self.run(rng, steps)?;
         for instrument in self.instruments.iter_mut() {
             instrument.on_relax_end()?;
         }
@@ -84,11 +83,11 @@ where
     }
 
     /// Measure the machine for a given number of steps.
-    pub fn measure_for<R: Rng>(&mut self, rng: &mut R, measure_steps: usize) -> MachineResult<()> {
+    pub fn measure_for<R: Rng>(&mut self, rng: &mut R, steps: usize) -> MachineResult<()> {
         for instrument in self.instruments.iter_mut() {
             instrument.on_measure_start(&self.thermostat, &self.hamiltonian, &self.state)?;
         }
-        self.run(rng, measure_steps)?;
+        self.run(rng, steps)?;
         for instrument in self.instruments.iter_mut() {
             instrument.on_measure_end()?;
         }

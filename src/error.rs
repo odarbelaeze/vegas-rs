@@ -4,8 +4,7 @@
 
 use arrow::error::ArrowError;
 use parquet::errors::ParquetError;
-use std::io::Error as StdIOError;
-use std::result::Result as StdResult;
+use std::{io::Error as StdIoError, result::Result};
 use thiserror::Error;
 use toml::{de::Error as TomlDeserializeError, ser::Error as TomlSerializeError};
 use vegas_lattice::error::VegasLatticeError;
@@ -16,7 +15,7 @@ pub enum VegasError {
     #[error("program error: {0}")]
     ProgramError(#[from] ProgramError),
     #[error("io error: {0}")]
-    IOError(#[from] IOError),
+    IOError(#[from] IoError),
     #[error("lattice error: {0}")]
     LatticeError(#[from] VegasLatticeError),
     #[error("toml deserialization error: {0}")]
@@ -46,9 +45,9 @@ pub enum ProgramError {
 
 // Error type for IO operations
 #[derive(Error, Debug)]
-pub enum IOError {
+pub enum IoError {
     #[error("std io error: {0}")]
-    StdIOError(#[from] StdIOError),
+    StdIoError(#[from] StdIoError),
     #[error("parquet error: {0}")]
     ParquetError(#[from] ParquetError),
     #[error("arrow error: {0}")]
@@ -66,22 +65,22 @@ pub enum MachineError {
 #[derive(Error, Debug)]
 pub enum InstrumentError {
     #[error("std io error: {0}")]
-    StdIOError(#[from] StdIOError),
+    StdIoError(#[from] StdIoError),
     #[error("io error: {0}")]
-    IOError(#[from] IOError),
+    IOError(#[from] IoError),
 }
 
 /// Result type for the vegas package
-pub type Result<T> = StdResult<T, VegasError>;
+pub type VegasResult<T> = Result<T, VegasError>;
 
 /// Result type for program misconfiguration
-pub type ProgramResult<T> = StdResult<T, ProgramError>;
+pub type ProgramResult<T> = Result<T, ProgramError>;
 
 /// Result type for IO operations
-pub type IOResult<T> = StdResult<T, IOError>;
+pub type IoResult<T> = Result<T, IoError>;
 
 /// Result type for machine operations
-pub type MachineResult<T> = StdResult<T, MachineError>;
+pub type MachineResult<T> = Result<T, MachineError>;
 
 /// Result type for instrument operations
-pub type InstrumentResult<T> = StdResult<T, InstrumentError>;
+pub type InstrumentResult<T> = Result<T, InstrumentError>;

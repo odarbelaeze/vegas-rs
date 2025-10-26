@@ -1,13 +1,12 @@
 //! Integrators for Monte Carlo simulations.
 
+use crate::{
+    energy::Hamiltonian,
+    state::{Flip, Spin, State},
+    thermostat::Thermostat,
+};
 use rand::Rng;
 use rand::distr::{Distribution, Uniform};
-
-use crate::thermostat::Thermostat;
-use crate::{
-    hamiltonian::Hamiltonian,
-    state::{Flip, Spin, State},
-};
 
 /// An integrator is a method that allows you to sample the phase space of a
 /// system.
