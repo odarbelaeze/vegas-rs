@@ -1,4 +1,28 @@
 //! Integrators for Monte Carlo simulations.
+//!
+//! This module contains various integrators that can be used to sample the
+//! phase space of a system using Monte Carlo methods. It includes the
+//! Metropolis integrator and a variant that flips spins instead of randomizing them.
+//!
+//! # Example
+//!
+//! ```rust
+//! use vegas::{
+//!     energy::{Gauge, Hamiltonian},
+//!     integrator::{Integrator, MetropolisFlipIntegrator},
+//!     state::{Spin, IsingSpin, State},
+//!     thermostat::Thermostat,
+//! };
+//! use rand::thread_rng;
+//!
+//! // Define a Hamiltonian (e.g., Gauge Hamiltonian).
+//! let hamiltonian = Gauge::new(1.0);
+//! let thermostat = Thermostat::new(2.5, 0.0);
+//! let integrator = MetropolisFlipIntegrator::new();
+//! let mut rng = thread_rng();
+//! let state: State<IsingSpin> = State::rand_with_size(&mut rng, 100);
+//! let new_state = integrator.step(&mut rng, &thermostat, &hamiltonian, state);
+//! ```
 
 use crate::{
     energy::Hamiltonian,
@@ -25,7 +49,7 @@ pub trait Integrator<S: Spin> {
 ///
 /// The Metropolis integrator is a Monte Carlo method that allows you to sample
 /// the phase space of a system. It is based on the Metropolis algorithm, which
-/// is a Markov chain Monte Carlo method.
+/// is a Markov Chain Monte Carlo method.
 #[derive(Debug, Default)]
 pub struct MetropolisIntegrator {}
 
@@ -37,7 +61,6 @@ impl MetropolisIntegrator {
 }
 
 impl<S: Spin> Integrator<S> for MetropolisIntegrator {
-    /// Perform a single step of the Metropolis integrator.
     fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
         rng: &mut R,
@@ -69,7 +92,7 @@ impl<S: Spin> Integrator<S> for MetropolisIntegrator {
 ///
 /// The Metropolis integrator is a Monte Carlo method that allows you to sample
 /// the phase space of a system. It is based on the Metropolis algorithm, which
-/// is a Markov chain Monte Carlo method.
+/// is a Markov Chain Monte Carlo method.
 #[derive(Debug, Default)]
 pub struct MetropolisFlipIntegrator {}
 
@@ -84,7 +107,6 @@ impl<S> Integrator<S> for MetropolisFlipIntegrator
 where
     S: Spin + Flip,
 {
-    /// Perform a single step of the Metropolis integrator.
     fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
         rng: &mut R,

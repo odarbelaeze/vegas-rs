@@ -1,4 +1,43 @@
 //! Programs to run on samples.
+//!
+//! A program is a sequence of steps that can be run on a system.
+//! Programs implement the `Program` trait, which requires a `run` method. This method takes a
+//! random number generator and a mutable reference to a `Machine`, allowing the program to
+//! manipulate the machine's state and behavior.
+//!
+//! Some of the provided programs include:
+//!
+//! * `Relax` - A program that relaxes the system at a specified temperature for a given number of steps.
+//! * `CoolDown` - A program that gradually cools down the system from a maximum temperature to a minimum temperature over a series of steps.
+//! * `HysteresisLoop` - A program that simulates a hysteresis loop by varying the external magnetic field and measuring the system's response.
+//!
+//! # Example
+//!
+//! ```rust
+//! use rand::SeedableRng;
+//! use rand_pcg::Pcg64;
+//! use vegas::{
+//!    energy::{Hamiltonian, ZeemanEnergy},
+//!    integrator::MetropolisIntegrator,
+//!    machine::Machine,
+//!    program::{CoolDown, Program},
+//!    state::{IsingSpin, State, Spin},
+//!    thermostat::Thermostat,
+//! };
+//!
+//! // Define a Hamiltonian (e.g., Zeeman Energy).
+//! let hamiltonian = ZeemanEnergy::new(IsingSpin::Up);
+//! let program = CoolDown::default()
+//!    .set_relax(10)
+//!    .set_steps(10);
+//! let mut rng = Pcg64::from_rng(&mut rand::rng());
+//! let state = State::<IsingSpin>::rand_with_size(&mut rng, 100);
+//! let integrator = MetropolisIntegrator::new();
+//! let thermostat = Thermostat::new(2.8, 0.0);
+//! let instruments = Vec::new();
+//! let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);
+//! let _ = program.run(&mut rng, &mut machine);
+//! ```
 
 use crate::{
     energy::Hamiltonian,

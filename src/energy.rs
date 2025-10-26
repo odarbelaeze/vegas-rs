@@ -262,12 +262,11 @@ where
 /// use vegas::hamiltonian;
 /// use vegas::state::{Spin, HeisenbergSpin};
 /// use vegas::energy::{Gauge, UniaxialAnisotropy};
-/// fn main() {
-///     let _hamiltonian =  hamiltonian!(
-///         UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0),
-///         Gauge::new(1.0)
-///     );
-/// }
+///
+/// let _hamiltonian =  hamiltonian!(
+///     UniaxialAnisotropy::new(HeisenbergSpin::up(), 1.0),
+///     Gauge::new(1.0)
+/// );
 /// ```
 #[macro_export]
 macro_rules! hamiltonian {

@@ -1,4 +1,9 @@
-//! Instrument module for hooking into the state of the simulation.
+//! Instruments to monitor the simulation.
+//!
+//! This module defines instruments that can hook into the simulation process
+//! to monitor and record various statistics and states during the simulation.
+//! It includes instruments for recording statistical data and saving spin states
+//! to Parquet files.
 
 use crate::{
     accumulator::Accumulator,
@@ -200,7 +205,6 @@ where
         Ok(())
     }
 
-    /// Hook called when a measurement starts.
     fn on_measure_start(
         &mut self,
         thermostat: &Thermostat,
@@ -214,7 +218,6 @@ where
         Ok(())
     }
 
-    /// Hook called when a measurement ends.
     fn on_measure_end(&mut self) -> InstrumentResult<()> {
         if let Some(thermostat) = &self.thermostat {
             self.io.write(
@@ -233,7 +236,6 @@ where
         Ok(())
     }
 
-    /// Hook called after each integration step.
     fn after_step(&mut self, state: &State<S>) -> InstrumentResult<()> {
         if let (Some(thermostat), Some(hamiltonian)) = (&self.thermostat, &self.hamiltonian) {
             let energy = hamiltonian.total_energy(thermostat, state) / state.len() as f64;

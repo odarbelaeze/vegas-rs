@@ -1,3 +1,5 @@
+//! A command line interface for running Vegas simulations and benchmarks.
+
 use clap::{Parser, Subcommand};
 use rand::SeedableRng;
 use rand_pcg::Pcg64;

@@ -1,4 +1,34 @@
 //! A machine to measure samples.
+//!
+//! A machine contains a sample with a given temperature and field, and allows
+//! to relax or measure the sample using a given integrator and hamiltonian.
+//! Instruments can be attached to the machine to measure various properties
+//! of the sample during the simulation.
+//!
+//! # Example
+//!
+//! ```rust
+//! use vegas::{
+//!     energy::{Gauge, Hamiltonian},
+//!     instrument::{Instrument, StatSensor},
+//!     integrator::MetropolisIntegrator,
+//!     machine::Machine,
+//!     state::{IsingSpin, State},
+//!     thermostat::Thermostat,
+//! };
+//! use rand::thread_rng;
+//!
+//! // Define a Hamiltonian (e.g., Gauge Hamiltonian).
+//! let hamiltonian = Gauge::new(1.0);
+//! let thermostat = Thermostat::new(2.5, 0.0);
+//! let integrator = MetropolisIntegrator::new();
+//! let mut rng = thread_rng();
+//! let state: State<IsingSpin> = State::rand_with_size(&mut rng, 100);
+//! let instruments = Vec::new();
+//! let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);
+//! machine.relax_for(&mut rng, 10).unwrap();
+//! machine.measure_for(&mut rng, 10).unwrap();
+//! ```
 
 use crate::{
     energy::Hamiltonian,
