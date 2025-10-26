@@ -10,7 +10,7 @@ use crate::{
     energy::Hamiltonian,
     error::{InstrumentResult, IoResult},
     io::{ObservableParquetIO, StateParquetIO},
-    state::{Magnetization, Spin, State},
+    state::{Spin, State},
     thermostat::Thermostat,
 };
 use std::{io::Write, marker::PhantomData, path::Path};

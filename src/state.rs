@@ -23,12 +23,10 @@ use rand::{
     Rng,
     distr::{Distribution, Uniform},
 };
-use std::{iter::Sum, ops::Add};
+use std::iter::Sum;
 
 /// This trait specifies what a spin is.
-pub trait Spin: Clone + Add<Self, Output = Self::MagnetizationType> {
-    type MagnetizationType: Magnetization<SpinType = Self>;
-
+pub trait Spin: Clone {
     /// New up an up Spin, this depends on what you're calling up.
     fn up() -> Self;
 
@@ -38,6 +36,9 @@ pub trait Spin: Clone + Add<Self, Output = Self::MagnetizationType> {
 
     /// New up a random spin.
     fn rand<R: Rng>(rng: &mut R) -> Self;
+
+    /// Create a spin from its projections along the x, y, and z axes.
+    fn from_projections(sx: f64, sy: f64, sz: f64) -> Field<Self>;
 
     /// Dot product of two spins.
     fn dot(&self, other: &Self) -> f64;
@@ -58,23 +59,6 @@ pub trait Flip {
     fn flip(&self) -> Self;
 }
 
-/// This trait represents a magnetization.
-pub trait Magnetization: Default + Clone + Sum<Self::SpinType> {
-    type SpinType: Spin;
-
-    /// Create a new magnetization.
-    fn new() -> Self
-    where
-        Self: Sized,
-    {
-        Default::default()
-    }
-    /// Get the magnitude of the magnetization.
-    fn magnitude(&self) -> f64;
-    /// Get the orientation of the magnetization.
-    fn orientation(&self) -> Self::SpinType;
-}
-
 /// This enum represents an Ising spin.
 #[derive(Debug, Clone, PartialEq)]
 pub enum IsingSpin {
@@ -83,8 +67,6 @@ pub enum IsingSpin {
 }
 
 impl Spin for IsingSpin {
-    type MagnetizationType = IsingMagnetization;
-
     fn up() -> Self {
         IsingSpin::Up
     }
@@ -101,6 +83,14 @@ impl Spin for IsingSpin {
             IsingSpin::Up
         } else {
             IsingSpin::Down
+        }
+    }
+
+    fn from_projections(_sx: f64, _sy: f64, sz: f64) -> Field<Self> {
+        if sz >= 0f64 {
+            Field::new(IsingSpin::Up, sz.abs())
+        } else {
+            Field::new(IsingSpin::Down, sz.abs())
         }
     }
 
@@ -143,100 +133,11 @@ impl Flip for IsingSpin {
     }
 }
 
-/// Ising magnetization.
-#[derive(Debug, Clone)]
-pub struct IsingMagnetization {
-    magnitude: usize,
-    reference: IsingSpin,
-}
-
-impl IsingMagnetization {
-    /// Create a new Ising magnetization.
-    pub fn new() -> Self {
-        IsingMagnetization {
-            magnitude: 0,
-            reference: IsingSpin::up(),
-        }
-    }
-}
-
-impl Magnetization for IsingMagnetization {
-    type SpinType = IsingSpin;
-
-    fn magnitude(&self) -> f64 {
-        self.magnitude as f64
-    }
-
-    fn orientation(&self) -> Self::SpinType {
-        self.reference.clone()
-    }
-}
-
-impl Default for IsingMagnetization {
-    fn default() -> Self {
-        IsingMagnetization::new()
-    }
-}
-
-impl Sum<IsingSpin> for IsingMagnetization {
-    fn sum<I: Iterator<Item = IsingSpin>>(iter: I) -> Self {
-        iter.fold(IsingMagnetization::new(), |acc, i| acc + i)
-    }
-}
-
-impl Add for IsingSpin {
-    type Output = IsingMagnetization;
-
-    fn add(self, other: IsingSpin) -> IsingMagnetization {
-        use IsingSpin::{Down, Up};
-        match (self, other) {
-            (Up, Up) => IsingMagnetization {
-                magnitude: 2,
-                reference: IsingSpin::up(),
-            },
-            (Down, Down) => IsingMagnetization {
-                magnitude: 2,
-                reference: IsingSpin::down(),
-            },
-            _ => IsingMagnetization {
-                magnitude: 0,
-                reference: IsingSpin::up(),
-            },
-        }
-    }
-}
-
-impl Add<IsingSpin> for IsingMagnetization {
-    type Output = IsingMagnetization;
-
-    fn add(self, rhs: IsingSpin) -> Self::Output {
-        if self.magnitude == 0 {
-            return IsingMagnetization {
-                magnitude: 1,
-                reference: rhs,
-            };
-        }
-        if self.reference == rhs {
-            IsingMagnetization {
-                magnitude: self.magnitude + 1,
-                reference: self.reference,
-            }
-        } else {
-            IsingMagnetization {
-                magnitude: self.magnitude - 1,
-                reference: self.reference,
-            }
-        }
-    }
-}
-
 /// Heisenberg spin.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HeisenbergSpin([f64; 3]);
 
 impl Spin for HeisenbergSpin {
-    type MagnetizationType = HeisenbergMagnetization;
-
     fn up() -> Self {
         HeisenbergSpin([0f64, 0f64, 1f64])
     }
@@ -248,6 +149,18 @@ impl Spin for HeisenbergSpin {
     fn rand<R: Rng>(rng: &mut R) -> Self {
         let (x, y, z) = marsaglia(rng);
         HeisenbergSpin([x, y, z])
+    }
+
+    fn from_projections(sx: f64, sy: f64, sz: f64) -> Field<Self> {
+        let magnitude = (sx * sx + sy * sy + sz * sz).sqrt();
+        if magnitude.abs() < std::f64::EPSILON {
+            Field::zero()
+        } else {
+            Field::new(
+                HeisenbergSpin([sx / magnitude, sy / magnitude, sz / magnitude]),
+                magnitude,
+            )
+        }
     }
 
     #[inline]
@@ -284,60 +197,49 @@ impl Flip for HeisenbergSpin {
     }
 }
 
-/// Heisenberg magnetization.
-#[derive(Debug, Clone)]
-pub struct HeisenbergMagnetization([f64; 3]);
+/// Field represents a magnetic field for the given spin type.
+pub struct Field<S: Spin> {
+    pub direction: S,
+    pub magnitude: f64,
+}
 
-impl HeisenbergMagnetization {
-    pub fn new() -> Self {
-        HeisenbergMagnetization([0f64, 0f64, 0f64])
+impl<S: Spin> Field<S> {
+    /// Create a new field with given direction and magnitude.
+    pub fn new(direction: S, magnitude: f64) -> Self {
+        Field {
+            direction,
+            magnitude,
+        }
+    }
+
+    /// Create a zero field.
+    pub fn zero() -> Self {
+        Field {
+            direction: S::up(),
+            magnitude: 0.0,
+        }
+    }
+
+    /// Get the magnitude of the field.
+    pub fn magnitude(&self) -> f64 {
+        self.magnitude
     }
 }
 
-impl Magnetization for HeisenbergMagnetization {
-    type SpinType = HeisenbergSpin;
-
-    fn magnitude(&self) -> f64 {
-        let HeisenbergMagnetization(a) = self;
-        a.iter().map(|i| i * i).sum::<f64>().sqrt()
-    }
-
-    fn orientation(&self) -> Self::SpinType {
-        let HeisenbergMagnetization(a) = self;
-        let magnitude = self.magnitude();
-        HeisenbergSpin([a[0] / magnitude, a[1] / magnitude, a[2] / magnitude])
-    }
-}
-
-impl Default for HeisenbergMagnetization {
+impl<S: Spin> Default for Field<S> {
     fn default() -> Self {
-        HeisenbergMagnetization::new()
+        Field::zero()
     }
 }
 
-impl Sum<HeisenbergSpin> for HeisenbergMagnetization {
-    fn sum<I: Iterator<Item = HeisenbergSpin>>(iter: I) -> Self {
-        iter.fold(HeisenbergMagnetization::new(), |acc, i| acc + i)
-    }
-}
-
-impl Add for HeisenbergSpin {
-    type Output = HeisenbergMagnetization;
-
-    fn add(self, other: HeisenbergSpin) -> HeisenbergMagnetization {
-        let HeisenbergSpin(a) = self;
-        let HeisenbergSpin(b) = other;
-        HeisenbergMagnetization([a[0] + b[0], a[1] + b[1], a[2] + b[2]])
-    }
-}
-
-impl Add<HeisenbergSpin> for HeisenbergMagnetization {
-    type Output = HeisenbergMagnetization;
-
-    fn add(self, rhs: HeisenbergSpin) -> Self::Output {
-        let HeisenbergMagnetization(a) = self;
-        let HeisenbergSpin(b) = rhs;
-        HeisenbergMagnetization([a[0] + b[0], a[1] + b[1], a[2] + b[2]])
+impl<S: Spin> Sum<S> for Field<S> {
+    fn sum<I: Iterator<Item = S>>(iter: I) -> Self {
+        iter.fold(Field::zero(), |acc, i| {
+            let px = acc.magnitude * acc.direction.sx() + i.sx();
+            let py = acc.magnitude * acc.direction.sy() + i.sy();
+            let pz = acc.magnitude * acc.direction.sz() + i.sz();
+            S::from_projections(px, py, pz)
+        })
     }
 }
 
@@ -388,10 +290,9 @@ impl<S: Spin> State<S> {
     }
 
     /// Get the magnetization of a state.
-    pub fn magnetization(&self) -> S::MagnetizationType
+    pub fn magnetization(&self) -> Field<S>
     where
-        S: Spin + Add<S, Output = S::MagnetizationType> + Clone,
-        S::MagnetizationType: Default + Sum<S>,
+        S: Spin,
     {
         self.spins().iter().cloned().sum()
     }
@@ -399,7 +300,7 @@ impl<S: Spin> State<S> {
 
 #[cfg(test)]
 mod tests {
-    use crate::state::{HeisenbergSpin, IsingMagnetization, IsingSpin, Spin, State};
+    use crate::state::{HeisenbergSpin, IsingSpin, Spin, State};
     use rand::SeedableRng;
     use rand_pcg::Pcg64;
 
@@ -423,10 +324,10 @@ mod tests {
 
     #[test]
     fn ising_magnetization_can_be_added_with_spin() {
-        let mag = IsingMagnetization::new();
-        let up = IsingSpin::up();
-        let result = mag + up;
-        assert_eq!(result.magnitude, 1);
+        let state = State::<IsingSpin>::up_with_size(10);
+        let mag = state.magnetization();
+        assert_eq!(mag.magnitude(), 10.0);
+        assert_eq!(mag.direction, IsingSpin::up());
     }
 
     #[test]
