@@ -39,6 +39,8 @@
 //! let _ = program.run(&mut rng, &mut machine);
 //! ```
 
+use core::f64;
+
 use crate::{
     energy::Hamiltonian,
     error::{ProgramError, ProgramResult},
@@ -173,7 +175,7 @@ impl CoolDown {
 
 impl Default for CoolDown {
     fn default() -> Self {
-        Self::new(3.0, 0.1, 0.1, 1000, 20000)
+        Self::new(3.0, 0.05, 0.1, 1000, 20000)
     }
 }
 
@@ -324,7 +326,7 @@ impl Program for HysteresisLoop {
             machine.relax_for(rng, self.relax)?;
             machine.measure_for(rng, self.steps)?;
             magnitude += self.field_step;
-            if magnitude < self.max_field {
+            if magnitude > self.max_field {
                 break;
             }
         }

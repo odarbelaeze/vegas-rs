@@ -200,8 +200,8 @@ impl Flip for HeisenbergSpin {
 /// Field represents a magnetic field for the given spin type.
 #[derive(Debug, Clone)]
 pub struct Field<S: Spin> {
-    pub orientation: S,
-    pub magnitude: f64,
+    orientation: S,
+    magnitude: f64,
 }
 
 impl<S: Spin> Field<S> {
@@ -240,12 +240,10 @@ impl<S: Spin> Default for Field<S> {
 
 impl<S: Spin> Sum<S> for Field<S> {
     fn sum<I: Iterator<Item = S>>(iter: I) -> Self {
-        iter.fold(Field::zero(), |acc, i| {
-            let px = acc.magnitude * acc.orientation.sx() + i.sx();
-            let py = acc.magnitude * acc.orientation.sy() + i.sy();
-            let pz = acc.magnitude * acc.orientation.sz() + i.sz();
-            S::from_projections(px, py, pz)
-        })
+        let (px, py, pz) = iter.fold((0f64, 0f64, 0f64), |(accx, accy, accz), i| {
+            (accx + i.sx(), accy + i.sy(), accz + i.sz())
+        });
+        S::from_projections(px, py, pz)
     }
 }
 
@@ -333,7 +331,7 @@ mod tests {
         let state = State::<IsingSpin>::up_with_size(10);
         let mag = state.magnetization();
         assert_eq!(mag.magnitude(), 10.0);
-        assert_eq!(mag.orientation, IsingSpin::up());
+        assert_eq!(mag.orientation(), &IsingSpin::up());
     }
 
     #[test]

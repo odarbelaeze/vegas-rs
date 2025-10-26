@@ -25,7 +25,9 @@ fn bench(lattice: Lattice, model: Model) -> VegasResult<()> {
     let hamiltonian = Exchange::from_lattice(&lattice);
     match model {
         Model::Ising => {
-            let program = CoolDown::default().set_max_temperature(5.0);
+            let program = CoolDown::default()
+                .set_max_temperature(5.0)
+                .set_cool_rate(0.05);
             let mut rng = Pcg64::from_rng(&mut rand::rng());
             let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
@@ -37,7 +39,9 @@ fn bench(lattice: Lattice, model: Model) -> VegasResult<()> {
             Ok(())
         }
         Model::Heisenberg => {
-            let program = CoolDown::default().set_max_temperature(2.5);
+            let program = CoolDown::default()
+                .set_max_temperature(2.5)
+                .set_cool_rate(0.05);
             let mut rng = Pcg64::from_rng(&mut rand::rng());
             let state = State::<HeisenbergSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
