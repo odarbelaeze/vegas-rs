@@ -1,0 +1,8 @@
+target
+*.swp
+tags
+data*
+.ropeproject
+Cargo.lock
+.idea
+*.parquet
