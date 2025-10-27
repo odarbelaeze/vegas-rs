@@ -1,6 +1,6 @@
 [package]
 name = "vegas"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Oscar Arbelaez <oscar@arbelaez.dev>"]
 description = "Little Monte Carlo code in rust"
 keywords = ["Monte-Carlo", "MCMC", "physics"]
@@ -17,7 +17,7 @@ sprs = "0.11"
 clap = { version = "4.5", features = ["cargo", "derive"] }
 rand_pcg = "0.9"
 thiserror = "2.0"
-toml = { version = "0.8", features = ["preserve_order"] }
+toml = { version = "0.9", features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
-parquet = "55.0"
-arrow = "55.0"
+parquet = "57.0"
+arrow = "57.0"

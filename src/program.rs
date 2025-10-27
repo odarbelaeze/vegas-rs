@@ -21,30 +21,32 @@
 //!    integrator::MetropolisIntegrator,
 //!    machine::Machine,
 //!    program::{CoolDown, Program},
-//!    state::{IsingSpin, State, Spin},
+//!    state::{Field, IsingSpin, State, Spin},
 //!    thermostat::Thermostat,
 //! };
 //!
 //! // Define a Hamiltonian (e.g., Zeeman Energy).
-//! let hamiltonian = ZeemanEnergy::new(IsingSpin::Up);
+//! let hamiltonian = ZeemanEnergy::new();
 //! let program = CoolDown::default()
 //!    .set_relax(10)
 //!    .set_steps(10);
 //! let mut rng = Pcg64::from_rng(&mut rand::rng());
 //! let state = State::<IsingSpin>::rand_with_size(&mut rng, 100);
 //! let integrator = MetropolisIntegrator::new();
-//! let thermostat = Thermostat::new(2.8, 0.0);
+//! let thermostat = Thermostat::new(2.8, Field::zero());
 //! let instruments = Vec::new();
 //! let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);
 //! let _ = program.run(&mut rng, &mut machine);
 //! ```
+
+use core::f64;
 
 use crate::{
     energy::Hamiltonian,
     error::{ProgramError, ProgramResult},
     integrator::Integrator,
     machine::Machine,
-    state::Spin,
+    state::{Field, Spin},
 };
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -173,7 +175,7 @@ impl CoolDown {
 
 impl Default for CoolDown {
     fn default() -> Self {
-        Self::new(3.0, 0.1, 0.1, 1000, 20000)
+        Self::new(3.0, 0.05, 0.1, 1000, 20000)
     }
 }
 
@@ -297,31 +299,34 @@ impl Program for HysteresisLoop {
             return Err(ProgramError::ZeroFieldStep);
         }
         machine.set_thermostat(machine.thermostat().with_temperature(self.temperature));
-        let mut field = 0.0;
+        let mut magnitude = 0.0;
         loop {
+            let field = Field::new(S::up(), magnitude);
             machine.set_thermostat(machine.thermostat().with_field(field));
             machine.relax_for(rng, self.relax)?;
             machine.measure_for(rng, self.steps)?;
-            field += self.field_step;
-            if field > self.max_field {
+            magnitude += self.field_step;
+            if magnitude > self.max_field {
                 break;
             }
         }
         loop {
+            let field = Field::new(S::up(), magnitude);
             machine.set_thermostat(machine.thermostat().with_field(field));
             machine.relax_for(rng, self.relax)?;
             machine.measure_for(rng, self.steps)?;
-            field -= self.field_step;
-            if field < -self.max_field {
+            magnitude -= self.field_step;
+            if magnitude < -self.max_field {
                 break;
             }
         }
         loop {
+            let field = Field::new(S::up(), magnitude);
             machine.set_thermostat(machine.thermostat().with_field(field));
             machine.relax_for(rng, self.relax)?;
             machine.measure_for(rng, self.steps)?;
-            field += self.field_step;
-            if field < self.max_field {
+            magnitude += self.field_step;
+            if magnitude > self.max_field {
                 break;
             }
         }

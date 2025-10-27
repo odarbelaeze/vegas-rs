@@ -7,7 +7,7 @@ use crate::{
     integrator::MetropolisIntegrator,
     machine::Machine,
     program::{CoolDown, HysteresisLoop, Program, Relax},
-    state::{HeisenbergSpin, IsingSpin, Spin, State},
+    state::{Field, HeisenbergSpin, IsingSpin, Spin, State},
     thermostat::Thermostat,
 };
 use clap::ValueEnum;
@@ -227,11 +227,10 @@ impl Input {
     fn run_with_spin<S: Spin + 'static, R: Rng>(&self, rng: &mut R) -> VegasResult<()> {
         let lattice = self.lattice();
         let integrator = MetropolisIntegrator::new();
-        let hamiltonian =
-            hamiltonian!(Exchange::from_lattice(&lattice), ZeemanEnergy::new(S::up()));
+        let hamiltonian = hamiltonian!(Exchange::from_lattice(&lattice), ZeemanEnergy::new());
         let instruments = self.instruments::<_, S>()?;
         let mut machine = Machine::new(
-            Thermostat::new(2.8, 0.0),
+            Thermostat::new(2.8, Field::zero()),
             hamiltonian,
             integrator,
             instruments,

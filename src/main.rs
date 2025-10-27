@@ -16,7 +16,7 @@ use vegas::{
     integrator::{MetropolisFlipIntegrator, MetropolisIntegrator},
     machine::Machine,
     program::{CoolDown, Program, Relax},
-    state::{HeisenbergSpin, IsingSpin, State},
+    state::{Field, HeisenbergSpin, IsingSpin, State},
     thermostat::Thermostat,
 };
 use vegas_lattice::Lattice;
@@ -25,11 +25,13 @@ fn bench(lattice: Lattice, model: Model) -> VegasResult<()> {
     let hamiltonian = Exchange::from_lattice(&lattice);
     match model {
         Model::Ising => {
-            let program = CoolDown::default().set_max_temperature(5.0);
+            let program = CoolDown::default()
+                .set_max_temperature(5.0)
+                .set_cool_rate(0.05);
             let mut rng = Pcg64::from_rng(&mut rand::rng());
             let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
-            let thermostat = Thermostat::new(2.8, 0.0);
+            let thermostat = Thermostat::new(2.8, Field::zero());
             let instruments: Vec<Box<dyn Instrument<_, _>>> =
                 vec![Box::new(StatSensor::<_, _>::new(Box::new(stdout())))];
             let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);
@@ -37,11 +39,13 @@ fn bench(lattice: Lattice, model: Model) -> VegasResult<()> {
             Ok(())
         }
         Model::Heisenberg => {
-            let program = CoolDown::default().set_max_temperature(2.5);
+            let program = CoolDown::default()
+                .set_max_temperature(2.5)
+                .set_cool_rate(0.05);
             let mut rng = Pcg64::from_rng(&mut rand::rng());
             let state = State::<HeisenbergSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
-            let thermostat = Thermostat::new(2.8, 0.0);
+            let thermostat = Thermostat::new(2.8, Field::zero());
             let instruments: Vec<Box<dyn Instrument<_, _>>> =
                 vec![Box::new(StatSensor::<_, _>::new(Box::new(stdout())))];
             let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);
@@ -64,7 +68,7 @@ fn bench_ising(length: usize) -> VegasResult<()> {
     let mut rng = Pcg64::from_rng(&mut rand::rng());
     let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
     let integrator = MetropolisFlipIntegrator::new();
-    let thermostat = Thermostat::new(2.8, 0.0);
+    let thermostat = Thermostat::new(2.8, Field::zero());
     let instruments: Vec<Box<dyn Instrument<_, _>>> =
         vec![Box::new(StatSensor::<_, _>::new(Box::new(stdout())))];
     let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);
