@@ -3,7 +3,7 @@
 //! An energy component is anything that can compute the energy of a given
 //! site for a given state.
 //!
-//!! The module provides several built-in energy components, such as
+//! The module provides several built-in energy components, such as
 //! `Gauge`, `UniaxialAnisotropy`, `ZeemanEnergy`, and `Exchange`.
 //!
 //! It also provides a `Compound` energy component that allows you to

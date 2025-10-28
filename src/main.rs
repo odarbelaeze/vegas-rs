@@ -6,16 +6,16 @@ use rand_pcg::Pcg64;
 use std::{
     fs::File,
     io::{Read, stdin, stdout},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 use vegas::{
     energy::Exchange,
     error::{IoError, VegasResult},
     input::{Input, Model},
     instrument::{Instrument, StatSensor},
-    integrator::{MetropolisFlipIntegrator, MetropolisIntegrator},
+    integrator::MetropolisIntegrator,
     machine::Machine,
-    program::{CoolDown, Program, Relax},
+    program::{CoolDown, Program},
     state::{Field, HeisenbergSpin, IsingSpin, State},
     thermostat::Thermostat,
 };
@@ -55,43 +55,8 @@ fn bench(lattice: Lattice, model: Model) -> VegasResult<()> {
     }
 }
 
-fn bench_ising(length: usize) -> VegasResult<()> {
-    let lattice = Lattice::sc(1.0).expand_x(length).expand_y(length).drop_z();
-    let hamiltonian = Exchange::from_lattice(&lattice);
-    let cool_rate = 0.05;
-    let relax = Relax::default().set_steps(500000).set_temperature(2.8);
-    let curie = CoolDown::default()
-        .set_steps(500000)
-        .set_max_temperature(2.8)
-        .set_min_temperature(1.8)
-        .set_cool_rate(cool_rate);
-    let mut rng = Pcg64::from_rng(&mut rand::rng());
-    let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
-    let integrator = MetropolisFlipIntegrator::new();
-    let thermostat = Thermostat::new(2.8, Field::zero());
-    let instruments: Vec<Box<dyn Instrument<_, _>>> =
-        vec![Box::new(StatSensor::<_, _>::new(Box::new(stdout())))];
-    let mut machine = Machine::new(thermostat, hamiltonian, integrator, instruments, state);
-    relax.run(&mut rng, &mut machine)?;
-    curie.run(&mut rng, &mut machine)?;
-    Ok(())
-}
-
 fn bench_model(model: Model, length: usize) -> VegasResult<()> {
     let lattice = Lattice::sc(1.0).expand_all(length);
-    bench(lattice, model)
-}
-
-fn bench_lattice(model: Model, input: &Path) -> VegasResult<()> {
-    let mut data = String::new();
-    let mut file = File::open(input).map_err(IoError::from)?;
-    file.read_to_string(&mut data).map_err(IoError::from)?;
-    let lattice: Lattice = data.parse()?;
-
-    println!("# Successfuly read the lattice!");
-    println!("# Simulating with {} sites", lattice.sites().len());
-    println!("# Simulating with {} exchanges", lattice.vertices().len());
-
     bench(lattice, model)
 }
 
@@ -124,24 +89,12 @@ fn check_error(res: VegasResult<()>) {
 
 #[derive(Debug, Subcommand)]
 enum SubCommand {
-    /// Run a 2D Ising model
-    Ising {
-        /// Length of the side lattice
-        length: usize,
-    },
     /// Run benchmarks
     Bench {
         /// Model to run
         model: Model,
         /// Length of the side lattice
         length: usize,
-    },
-    /// Run a lattice
-    Lattice {
-        /// Model to run
-        model: Model,
-        /// Path to the lattice file
-        lattice: PathBuf,
     },
     /// Print the default input
     Input,
@@ -159,9 +112,7 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
     match cli.subcmd {
-        SubCommand::Ising { length } => check_error(bench_ising(length)),
         SubCommand::Bench { length, model } => check_error(bench_model(model, length)),
-        SubCommand::Lattice { lattice, model } => check_error(bench_lattice(model, &lattice)),
         SubCommand::Input => check_error(print_default_input()),
         SubCommand::Run { input } => check_error(run_input(input)),
     }
