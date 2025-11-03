@@ -188,19 +188,19 @@ impl Integrator<IsingSpin> for WolffIntegrator {
         let mut queue = VecDeque::new();
         queue.push_back(source);
         let mut visited = vec![false; state.len()];
-        let mut cluster = vec![source];
+        let mut cluster = vec![];
         while let Some(site) = queue.pop_front() {
             if visited[site] {
                 continue;
             }
             visited[site] = true;
+            cluster.push(site);
             let spin = state.at(site);
             for &neighbor in &self.neighbor_list[site] {
                 if !visited[neighbor] && state.at(neighbor) == spin {
                     let prob = 1.0 - (-2.0 / thermostat.temperature()).exp();
                     if rng.random::<f64>() < prob {
                         queue.push_back(neighbor);
-                        cluster.push(neighbor);
                     }
                 }
             }
