@@ -1,0 +1,34 @@
+model = "Ising"
+
+[sample.unitcell]
+name = "sc"
+
+[sample.size]
+x = 10
+y = 10
+z = 10
+
+[sample.pbc]
+x = true
+y = true
+z = true
+
+[[steps]]
+program = "Relax"
+steps = 1000
+temperature = 5.0
+
+[[steps]]
+program = "CoolDown"
+max_temperature = 5.0
+min_temperature = 0.01
+cool_rate = 0.05
+relax = 1000
+steps = 20000
+
+[output]
+raw = "./output.parquet"
+
+[output.state]
+path = "./state.parquet"
+frequency = 1000

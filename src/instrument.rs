@@ -257,8 +257,8 @@ where
     relax: Option<bool>,
     step: usize,
     stage: usize,
+    thermostat: Option<Thermostat<S>>,
     phantom_h: PhantomData<H>,
-    phantom_s: PhantomData<S>,
 }
 
 impl<H, S> StateSensor<H, S>
@@ -273,8 +273,8 @@ where
             relax: None,
             stage: 0,
             step: 0,
+            thermostat: None,
             phantom_h: PhantomData,
-            phantom_s: PhantomData,
         })
     }
 }
@@ -286,11 +286,12 @@ where
 {
     fn on_relax_start(
         &mut self,
-        _thermostat: &Thermostat<S>,
+        thermostat: &Thermostat<S>,
         _hamiltonian: &H,
         _state: &State<S>,
     ) -> InstrumentResult<()> {
         self.relax = Some(true);
+        self.thermostat = Some(thermostat.clone());
         Ok(())
     }
 
@@ -298,16 +299,18 @@ where
         self.relax = None;
         self.step = 0;
         self.stage += 1;
+        self.thermostat = None;
         Ok(())
     }
 
     fn on_measure_start(
         &mut self,
-        _thermostat: &Thermostat<S>,
+        thermostat: &Thermostat<S>,
         _hamiltonian: &H,
         _state: &State<S>,
     ) -> InstrumentResult<()> {
         self.relax = Some(false);
+        self.thermostat = Some(thermostat.clone());
         Ok(())
     }
 
@@ -315,14 +318,17 @@ where
         self.relax = None;
         self.step = 0;
         self.stage += 1;
+        self.thermostat = None;
         Ok(())
     }
 
     fn after_step(&mut self, state: &State<S>) -> InstrumentResult<()> {
         if self.step.is_multiple_of(self.frequency)
             && let Some(relax) = self.relax
+            && let Some(thermostat) = &self.thermostat
         {
-            self.io.write(relax, self.stage, self.step, state)?;
+            self.io
+                .write(relax, self.stage, self.step, &thermostat, &state)?;
         }
         self.step += 1;
         Ok(())

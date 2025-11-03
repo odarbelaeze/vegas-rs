@@ -100,7 +100,6 @@
 //!
 //! use vegas::{
 //!     energy::Exchange,
-//!     input::{Input, Model},
 //!     instrument::{Instrument, StatSensor},
 //!     integrator::MetropolisIntegrator,
 //!     machine::Machine,

@@ -24,13 +24,16 @@
 //! let new_state = integrator.step(&mut rng, &thermostat, &hamiltonian, state);
 //! ```
 
+use std::collections::VecDeque;
+
 use crate::{
     energy::Hamiltonian,
-    state::{Flip, Spin, State},
+    state::{Flip, IsingSpin, Spin, State},
     thermostat::Thermostat,
 };
 use rand::Rng;
 use rand::distr::{Distribution, Uniform};
+use vegas_lattice::Lattice;
 
 /// An integrator is a method that allows you to sample the phase space of a
 /// system.
@@ -130,6 +133,86 @@ where
             }
             state.set_at(site, old_spin);
         }
+        state
+    }
+}
+
+/// Wolff cluster integrator for Ising spins.
+///
+/// The Wolff integrator is a Monte Carlo method that allows you to sample
+/// the phase space of a system using cluster updates. It is based on the
+/// Wolff algorithm, which is a cluster Monte Carlo method.
+#[derive(Debug)]
+pub struct WolffIntegrator {
+    neighbor_list: Vec<Vec<usize>>,
+}
+
+impl WolffIntegrator {
+    /// Create a new Wolff integrator with a given neighbor list.
+    pub fn new(neighbor_list: Vec<Vec<usize>>) -> Self {
+        Self { neighbor_list }
+    }
+
+    /// Create a new Wolff integrator from a lattice.
+    pub fn from_lattice(lattice: &Lattice) -> Self {
+        let mut neighbor_list = vec![Vec::new(); lattice.sites().len()];
+        for vertex in lattice.vertices() {
+            neighbor_list[vertex.source()].push(vertex.target());
+            neighbor_list[vertex.target()].push(vertex.source());
+        }
+        Self { neighbor_list }
+    }
+}
+
+impl Integrator<IsingSpin> for WolffIntegrator {
+    /// Perform a single step of the Wolff integrator.
+    ///
+    /// Even though the Hamiltonian is not used in this integrator, it is included
+    /// in the function signature to comply with the `Integrator` trait. This method
+    /// is only valid for Ising spins and the Exchange Hamiltonian.
+    fn step<R: Rng, H: Hamiltonian<IsingSpin>>(
+        &self,
+        rng: &mut R,
+        thermostat: &Thermostat<IsingSpin>,
+        _hamiltonian: &H,
+        state: State<IsingSpin>,
+    ) -> State<IsingSpin> {
+        // Make sure the neighbor list matches the state size
+        debug_assert!(state.len() == self.neighbor_list.len());
+
+        // Choose a random site to start the cluster
+        let sites = Uniform::new(0, state.len()).expect("should always be able to create");
+        let source = sites.sample(rng);
+
+        // Build the cluster using a queue
+        let mut queue = VecDeque::new();
+        queue.push_back(source);
+        let mut visited = vec![false; state.len()];
+        let mut cluster = vec![source];
+        while let Some(site) = queue.pop_front() {
+            if visited[site] {
+                continue;
+            }
+            visited[site] = true;
+            let spin = state.at(site);
+            for &neighbor in &self.neighbor_list[site] {
+                if !visited[neighbor] && state.at(neighbor) == spin {
+                    let prob = 1.0 - (-2.0 / thermostat.temperature()).exp();
+                    if rng.random::<f64>() < prob {
+                        queue.push_back(neighbor);
+                        cluster.push(neighbor);
+                    }
+                }
+            }
+        }
+
+        // Flip the spins in the cluster
+        let mut state = state;
+        for &site in &cluster {
+            let old_spin = state.at(site).clone();
+            state.set_at(site, old_spin.flip());
+        }
+
         state
     }
 }

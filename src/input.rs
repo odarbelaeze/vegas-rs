@@ -1,10 +1,10 @@
-//! Input for a generic simulation.
+//! Input structures for various simulations.
 
 use crate::{
     energy::{Exchange, Hamiltonian, ZeemanEnergy},
     error::VegasResult,
     instrument::{Instrument, RawStatSensor, StatSensor, StateSensor},
-    integrator::MetropolisIntegrator,
+    integrator::{MetropolisIntegrator, WolffIntegrator},
     machine::Machine,
     program::{CoolDown, HysteresisLoop, Program, Relax},
     state::{Field, HeisenbergSpin, IsingSpin, Spin, State},
@@ -145,20 +145,20 @@ impl Default for Step {
 
 /// Input for a generic simulation.
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Input {
+pub struct MetropolisInput {
     /// Model to simulate
-    pub model: Model,
+    model: Model,
     /// Sample to simulate
-    pub sample: Sample,
+    sample: Sample,
     /// Steps to take
-    pub steps: Vec<Step>,
+    steps: Vec<Step>,
     /// Output for the simulation
-    pub output: Option<Output>,
+    output: Option<Output>,
 }
 
-impl Default for Input {
+impl Default for MetropolisInput {
     fn default() -> Self {
-        Input {
+        MetropolisInput {
             model: Default::default(),
             sample: Default::default(),
             steps: vec![
@@ -170,16 +170,16 @@ impl Default for Input {
     }
 }
 
-pub struct InputBuilder {
+pub struct MetropolisInputBuilder {
     model: Option<Model>,
     sample: Option<Sample>,
     steps: Option<Vec<Step>>,
     output: Option<Output>,
 }
 
-impl InputBuilder {
+impl MetropolisInputBuilder {
     pub fn new() -> Self {
-        InputBuilder {
+        MetropolisInputBuilder {
             model: None,
             sample: None,
             steps: None,
@@ -207,8 +207,8 @@ impl InputBuilder {
         self
     }
 
-    pub fn build(self) -> Input {
-        Input {
+    pub fn build(self) -> MetropolisInput {
+        MetropolisInput {
             model: self.model.unwrap_or_default(),
             sample: self.sample.unwrap_or_default(),
             steps: self.steps.unwrap_or_default(),
@@ -217,13 +217,13 @@ impl InputBuilder {
     }
 }
 
-impl Default for InputBuilder {
+impl Default for MetropolisInputBuilder {
     fn default() -> Self {
-        InputBuilder::new()
+        MetropolisInputBuilder::new()
     }
 }
 
-impl Input {
+impl MetropolisInput {
     fn run_with_spin<S: Spin + 'static, R: Rng>(&self, rng: &mut R) -> VegasResult<()> {
         let lattice = self.lattice();
         let integrator = MetropolisIntegrator::new();
@@ -306,5 +306,164 @@ impl Input {
             Model::Ising => self.run_with_spin::<IsingSpin, _>(rng),
             Model::Heisenberg => self.run_with_spin::<HeisenbergSpin, _>(rng),
         }
+    }
+}
+
+/// Input for a Wolff simulation.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct WolffInput {
+    exchange: Option<f64>,
+    sample: Sample,
+    steps: Vec<Step>,
+    output: Option<Output>,
+}
+
+impl Default for WolffInput {
+    fn default() -> Self {
+        WolffInput {
+            exchange: None,
+            sample: Default::default(),
+            steps: vec![
+                Step::Relax(Relax::default()),
+                Step::CoolDown(CoolDown::default()),
+            ],
+            output: Some(Output::default()),
+        }
+    }
+}
+
+pub struct WolffInputBuilder {
+    exchange: Option<f64>,
+    sample: Option<Sample>,
+    steps: Option<Vec<Step>>,
+    output: Option<Output>,
+}
+
+impl WolffInputBuilder {
+    pub fn new() -> Self {
+        WolffInputBuilder {
+            exchange: None,
+            sample: None,
+            steps: None,
+            output: None,
+        }
+    }
+
+    pub fn exchange(mut self, exchange: f64) -> Self {
+        self.exchange = Some(exchange);
+        self
+    }
+
+    pub fn sample(mut self, sample: Sample) -> Self {
+        self.sample = Some(sample);
+        self
+    }
+
+    pub fn steps(mut self, steps: Vec<Step>) -> Self {
+        self.steps = Some(steps);
+        self
+    }
+
+    pub fn output(mut self, output: Output) -> Self {
+        self.output = Some(output);
+        self
+    }
+
+    pub fn build(self) -> WolffInput {
+        WolffInput {
+            exchange: self.exchange,
+            sample: self.sample.unwrap_or_default(),
+            steps: self.steps.unwrap_or_default(),
+            output: self.output,
+        }
+    }
+}
+
+impl Default for WolffInputBuilder {
+    fn default() -> Self {
+        WolffInputBuilder::new()
+    }
+}
+
+impl WolffInput {
+    fn lattice(&self) -> Lattice {
+        let unitcell = match &self.sample.unitcell {
+            UnitCell::Name(name) => match name {
+                UnitCellName::SC => Lattice::sc(1.0),
+                UnitCellName::BCC => Lattice::bcc(1.0),
+                UnitCellName::FCC => Lattice::fcc(1.0),
+            },
+            UnitCell::Path(_path) => todo!(),
+        };
+        let UnitCellSize { x, y, z } = self.sample.size;
+        let PeriodicBoundaryConditions {
+            x: pbc_x,
+            y: pbc_y,
+            z: pbc_z,
+        } = self.sample.pbc;
+        let mut lattice = unitcell.expand(x, y, z);
+        if !pbc_x {
+            lattice = lattice.drop_x();
+        }
+        if !pbc_y {
+            lattice = lattice.drop_y();
+        }
+        if !pbc_z {
+            lattice = lattice.drop_z();
+        }
+        lattice
+    }
+
+    fn instruments<H: Hamiltonian<IsingSpin> + 'static>(
+        &self,
+    ) -> VegasResult<Vec<Box<dyn Instrument<H, IsingSpin>>>> {
+        let mut instruments: Vec<Box<dyn Instrument<_, _>>> =
+            vec![Box::new(StatSensor::<_, IsingSpin>::new(
+                Box::new(stdout()),
+            ))];
+        if let Some(output) = &self.output
+            && let Some(raw_filename) = &output.raw
+        {
+            instruments.push(Box::new(RawStatSensor::<_, IsingSpin>::try_new(
+                raw_filename,
+            )?));
+        }
+        if let Some(output) = &self.output
+            && let Some(state_output) = &output.state
+        {
+            instruments.push(Box::new(StateSensor::<_, IsingSpin>::try_new(
+                &state_output.path,
+                state_output.frequency,
+            )?));
+        }
+        Ok(instruments)
+    }
+
+    pub fn run<R: Rng>(&self, rng: &mut R) -> VegasResult<()> {
+        let lattice = self.lattice();
+        let integrator = WolffIntegrator::from_lattice(&lattice);
+        let hamiltonian = hamiltonian!(Exchange::from_lattice(&lattice));
+        let instruments = self.instruments()?;
+        let mut machine = Machine::new(
+            Thermostat::new(2.8, Field::zero()),
+            hamiltonian,
+            integrator,
+            instruments,
+            State::<IsingSpin>::rand_with_size(rng, lattice.sites().len()),
+        );
+        for program in self.steps.iter() {
+            match program {
+                Step::Relax(relax) => {
+                    relax.run(rng, &mut machine)?;
+                }
+                Step::CoolDown(curie) => {
+                    curie.run(rng, &mut machine)?;
+                }
+                Step::Hysteresis(hysteresis) => {
+                    hysteresis.run(rng, &mut machine)?;
+                }
+            }
+        }
+        Ok(())
     }
 }

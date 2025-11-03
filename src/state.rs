@@ -190,13 +190,6 @@ impl Spin for HeisenbergSpin {
     }
 }
 
-impl Flip for HeisenbergSpin {
-    fn flip(&self) -> Self {
-        let HeisenbergSpin(a) = self;
-        HeisenbergSpin([-a[0], -a[1], -a[2]])
-    }
-}
-
 /// Field represents a magnetic field for the given spin type.
 #[derive(Debug, Clone)]
 pub struct Field<S: Spin> {
@@ -223,7 +216,7 @@ impl<S: Spin> Field<S> {
 
     /// Get the magnitude of the field.
     pub fn magnitude(&self) -> f64 {
-        self.magnitude
+        self.magnitude.abs()
     }
 
     /// Get the orientation of the field.

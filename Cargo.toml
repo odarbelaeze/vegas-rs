@@ -12,7 +12,7 @@ edition = "2024"
 
 [dependencies]
 rand = { version = "0.9", features = ["small_rng"] }
-vegas-lattice = "0.11"
+vegas-lattice = "0.11.1"
 sprs = "0.11"
 clap = { version = "4.5", features = ["cargo", "derive"] }
 rand_pcg = "0.9"
