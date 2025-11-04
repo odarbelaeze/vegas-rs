@@ -144,23 +144,30 @@ where
 /// Wolff algorithm, which is a cluster Monte Carlo method.
 #[derive(Debug)]
 pub struct WolffIntegrator {
+    exchange: f64,
     neighbor_list: Vec<Vec<usize>>,
 }
 
 impl WolffIntegrator {
     /// Create a new Wolff integrator with a given neighbor list.
-    pub fn new(neighbor_list: Vec<Vec<usize>>) -> Self {
-        Self { neighbor_list }
+    pub fn new(exchange: f64, neighbor_list: Vec<Vec<usize>>) -> Self {
+        Self {
+            exchange,
+            neighbor_list,
+        }
     }
 
     /// Create a new Wolff integrator from a lattice.
-    pub fn from_lattice(lattice: &Lattice) -> Self {
+    pub fn from_lattice(exchange: f64, lattice: &Lattice) -> Self {
         let mut neighbor_list = vec![Vec::new(); lattice.sites().len()];
         for vertex in lattice.vertices() {
             neighbor_list[vertex.source()].push(vertex.target());
             neighbor_list[vertex.target()].push(vertex.source());
         }
-        Self { neighbor_list }
+        Self {
+            exchange,
+            neighbor_list,
+        }
     }
 }
 
@@ -188,17 +195,15 @@ impl Integrator<IsingSpin> for WolffIntegrator {
         let mut queue = VecDeque::new();
         queue.push_back(source);
         let mut visited = vec![false; state.len()];
-        let mut cluster = vec![];
         while let Some(site) = queue.pop_front() {
             if visited[site] {
                 continue;
             }
             visited[site] = true;
-            cluster.push(site);
             let spin = state.at(site);
             for &neighbor in &self.neighbor_list[site] {
                 if !visited[neighbor] && state.at(neighbor) == spin {
-                    let prob = 1.0 - (-2.0 / thermostat.temperature()).exp();
+                    let prob = 1.0 - (-2.0 * self.exchange / thermostat.temperature()).exp();
                     if rng.random::<f64>() < prob {
                         queue.push_back(neighbor);
                     }
@@ -207,12 +212,15 @@ impl Integrator<IsingSpin> for WolffIntegrator {
         }
 
         // Flip the spins in the cluster
-        let mut state = state;
-        for &site in &cluster {
-            let old_spin = state.at(site).clone();
-            state.set_at(site, old_spin.flip());
-        }
 
         state
+            .into_iter()
+            .zip(visited.iter())
+            .map(
+                |(spin, &in_cluster)| {
+                    if in_cluster { spin.flip() } else { spin }
+                },
+            )
+            .collect()
     }
 }

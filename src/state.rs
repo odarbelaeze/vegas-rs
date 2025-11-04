@@ -241,7 +241,7 @@ impl<S: Spin> Sum<S> for Field<S> {
 }
 
 /// A state of spins.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct State<S: Spin>(Vec<S>);
 
 impl<S: Spin> State<S> {
@@ -292,6 +292,27 @@ impl<S: Spin> State<S> {
         S: Spin,
     {
         self.spins().iter().cloned().sum()
+    }
+}
+
+impl<S> IntoIterator for State<S>
+where
+    S: Spin,
+{
+    type Item = S;
+    type IntoIter = std::vec::IntoIter<S>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<S> FromIterator<S> for State<S>
+where
+    S: Spin,
+{
+    fn from_iter<T: IntoIterator<Item = S>>(iter: T) -> Self {
+        State::<S>(iter.into_iter().collect())
     }
 }
 

@@ -6,3 +6,4 @@ data*
 Cargo.lock
 .idea
 *.parquet
+*.out

@@ -16,12 +16,12 @@ z = true
 [[steps]]
 program = "Relax"
 steps = 1000
-temperature = 5.0
+temperature = 6.0
 
 [[steps]]
 program = "CoolDown"
-max_temperature = 5.0
-min_temperature = 0.01
+max_temperature = 6.0
+min_temperature = 1.0
 cool_rate = 0.05
 relax = 1000
 steps = 20000

@@ -156,6 +156,12 @@ pub struct MetropolisInput {
     output: Option<Output>,
 }
 
+impl MetropolisInput {
+    pub fn builder() -> MetropolisInputBuilder {
+        MetropolisInputBuilder::new()
+    }
+}
+
 impl Default for MetropolisInput {
     fn default() -> Self {
         MetropolisInput {
@@ -318,6 +324,12 @@ pub struct WolffInput {
     output: Option<Output>,
 }
 
+impl WolffInput {
+    pub fn builder() -> WolffInputBuilder {
+        WolffInputBuilder::new()
+    }
+}
+
 impl Default for WolffInput {
     fn default() -> Self {
         WolffInput {
@@ -441,7 +453,7 @@ impl WolffInput {
 
     pub fn run<R: Rng>(&self, rng: &mut R) -> VegasResult<()> {
         let lattice = self.lattice();
-        let integrator = WolffIntegrator::from_lattice(&lattice);
+        let integrator = WolffIntegrator::from_lattice(self.exchange.unwrap_or(1.0), &lattice);
         let hamiltonian = hamiltonian!(Exchange::from_lattice(&lattice));
         let instruments = self.instruments()?;
         let mut machine = Machine::new(
