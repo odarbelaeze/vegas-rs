@@ -94,7 +94,7 @@ You can run the simulation by executing the following command:
 vegas run metropolis input.toml
 ```
 
-There's a simmilar input for the Wolff algorithm, you can run with the following
+There's a similar input for the Wolff algorithm, you can run with the following
 command:
 
 

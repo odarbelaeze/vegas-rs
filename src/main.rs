@@ -119,7 +119,7 @@ enum SubCommand {
     },
     /// Print the default input
     Input,
-    /// Run a Wolf simulation from an input file
+    /// Run simulations
     Run {
         /// Integrator to run
         integrator: Integrator,

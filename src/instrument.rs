@@ -258,7 +258,7 @@ where
     step: usize,
     stage: usize,
     thermostat: Option<Thermostat<S>>,
-    phantom_h: PhantomData<H>,
+    phantom: PhantomData<H>,
 }
 
 impl<H, S> StateSensor<H, S>
@@ -274,7 +274,7 @@ where
             stage: 0,
             step: 0,
             thermostat: None,
-            phantom_h: PhantomData,
+            phantom: PhantomData,
         })
     }
 }
@@ -328,7 +328,7 @@ where
             && let Some(thermostat) = &self.thermostat
         {
             self.io
-                .write(relax, self.stage, self.step, &thermostat, &state)?;
+                .write(relax, self.stage, self.step, thermostat, state)?;
         }
         self.step += 1;
         Ok(())
