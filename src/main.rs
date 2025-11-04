@@ -1,6 +1,6 @@
 //! A command line interface for running Vegas simulations and benchmarks.
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
 use std::{
@@ -100,6 +100,14 @@ fn check_error(res: VegasResult<()>) {
     }
 }
 
+#[derive(Debug, Clone, ValueEnum)]
+enum Integrator {
+    /// Metropolis integrator
+    Metropolis,
+    /// Wolff integrator
+    Wolff,
+}
+
 #[derive(Debug, Subcommand)]
 enum SubCommand {
     /// Run benchmarks
@@ -111,10 +119,13 @@ enum SubCommand {
     },
     /// Print the default input
     Input,
-    /// Run a Metropolis simulation from an input file
-    Metropolis { input: PathBuf },
     /// Run a Wolf simulation from an input file
-    Wolff { input: PathBuf },
+    Run {
+        /// Integrator to run
+        integrator: Integrator,
+        /// Input file
+        input: PathBuf,
+    },
 }
 
 #[derive(Debug, Parser)]
@@ -129,7 +140,9 @@ fn main() {
     match cli.subcmd {
         SubCommand::Bench { length, model } => check_error(bench_model(model, length)),
         SubCommand::Input => check_error(print_default_input()),
-        SubCommand::Metropolis { input } => check_error(run_metropolis(input)),
-        SubCommand::Wolff { input } => check_error(run_wolff(input)),
+        SubCommand::Run { integrator, input } => match integrator {
+            Integrator::Metropolis => check_error(run_metropolis(input)),
+            Integrator::Wolff => check_error(run_wolff(input)),
+        },
     }
 }
