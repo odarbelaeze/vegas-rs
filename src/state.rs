@@ -190,13 +190,6 @@ impl Spin for HeisenbergSpin {
     }
 }
 
-impl Flip for HeisenbergSpin {
-    fn flip(&self) -> Self {
-        let HeisenbergSpin(a) = self;
-        HeisenbergSpin([-a[0], -a[1], -a[2]])
-    }
-}
-
 /// Field represents a magnetic field for the given spin type.
 #[derive(Debug, Clone)]
 pub struct Field<S: Spin> {
@@ -223,7 +216,7 @@ impl<S: Spin> Field<S> {
 
     /// Get the magnitude of the field.
     pub fn magnitude(&self) -> f64 {
-        self.magnitude
+        self.magnitude.abs()
     }
 
     /// Get the orientation of the field.
@@ -248,7 +241,7 @@ impl<S: Spin> Sum<S> for Field<S> {
 }
 
 /// A state of spins.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct State<S: Spin>(Vec<S>);
 
 impl<S: Spin> State<S> {
@@ -299,6 +292,27 @@ impl<S: Spin> State<S> {
         S: Spin,
     {
         self.spins().iter().cloned().sum()
+    }
+}
+
+impl<S> IntoIterator for State<S>
+where
+    S: Spin,
+{
+    type Item = S;
+    type IntoIter = std::vec::IntoIter<S>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<S> FromIterator<S> for State<S>
+where
+    S: Spin,
+{
+    fn from_iter<T: IntoIterator<Item = S>>(iter: T) -> Self {
+        State::<S>(iter.into_iter().collect())
     }
 }
 

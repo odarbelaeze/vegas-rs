@@ -57,7 +57,7 @@ impl ObservableParquetIO {
         let step: UInt64Array = (0..energy.len()).map(|i| i as u64).collect();
         let stage: UInt64Array = repeat_n(stage as u64, energy.len()).collect();
         let relax: BooleanArray = repeat_n(Some(relax), energy.len()).collect();
-        let temp: Float64Array = repeat_n(thermostat.temperature(), energy.len()).collect();
+        let temperature: Float64Array = repeat_n(thermostat.temperature(), energy.len()).collect();
         let field: Float64Array = repeat_n(thermostat.field().magnitude(), energy.len()).collect();
         let energy: Float64Array = Float64Array::from(energy.to_owned());
         let magnetization: Float64Array = Float64Array::from(magnetization.to_owned());
@@ -68,7 +68,7 @@ impl ObservableParquetIO {
                 Arc::new(relax),
                 Arc::new(stage),
                 Arc::new(step),
-                Arc::new(temp),
+                Arc::new(temperature),
                 Arc::new(field),
                 Arc::new(energy),
                 Arc::new(magnetization),
@@ -106,6 +106,8 @@ impl StateParquetIO {
             Field::new("relax", DataType::Boolean, false),
             Field::new("stage", DataType::UInt64, false),
             Field::new("step", DataType::UInt64, false),
+            Field::new("temperature", DataType::Float64, false),
+            Field::new("field", DataType::Float64, false),
             Field::new("id", DataType::UInt64, false),
             Field::new("sx", DataType::Float64, false),
             Field::new("sy", DataType::Float64, false),
@@ -126,11 +128,14 @@ impl StateParquetIO {
         relax: bool,
         stage: usize,
         step: usize,
+        thermostat: &Thermostat<S>,
         state: &State<S>,
     ) -> IoResult<()> {
         let relax = BooleanArray::from(repeat_n(relax, state.len()).collect::<Vec<_>>());
         let stage = UInt64Array::from(repeat_n(stage as u64, state.len()).collect::<Vec<_>>());
         let step = UInt64Array::from(repeat_n(step as u64, state.len()).collect::<Vec<_>>());
+        let temperature: Float64Array = repeat_n(thermostat.temperature(), state.len()).collect();
+        let field: Float64Array = repeat_n(thermostat.field().magnitude(), state.len()).collect();
         let id = UInt64Array::from((0..state.len()).map(|i| i as u64).collect::<Vec<_>>());
         let sx = Float64Array::from(state.spins().iter().map(|s| s.sx()).collect::<Vec<_>>());
         let sy = Float64Array::from(state.spins().iter().map(|s| s.sy()).collect::<Vec<_>>());
@@ -141,6 +146,8 @@ impl StateParquetIO {
                 Arc::new(relax),
                 Arc::new(stage),
                 Arc::new(step),
+                Arc::new(temperature),
+                Arc::new(field),
                 Arc::new(id),
                 Arc::new(sx),
                 Arc::new(sy),

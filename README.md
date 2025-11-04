@@ -91,8 +91,17 @@ frequency = 1000
 You can run the simulation by executing the following command:
 
 ```bash
-vegas run input.toml
+vegas run metropolis input.toml
 ```
+
+There's a similar input for the Wolff algorithm, you can run with the following
+command:
+
+
+```bash
+vegas run wolff input.toml
+```
+
 
 ## Contributing
 
