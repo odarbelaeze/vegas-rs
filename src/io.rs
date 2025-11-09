@@ -16,16 +16,24 @@ use arrow::{
     record_batch::RecordBatch,
 };
 use parquet::{arrow::ArrowWriter, basic::Compression, file::properties::WriterProperties};
-use std::{fs::File, iter::repeat_n, path::Path, sync::Arc};
+use std::{
+    fs::{File, rename},
+    iter::repeat_n,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 pub struct ObservableParquetIO {
+    path: PathBuf,
+    temp_path: PathBuf,
     schema: Arc<Schema>,
     writer: Option<ArrowWriter<File>>,
 }
 
 impl ObservableParquetIO {
     pub fn try_new<P: AsRef<Path>>(path: P) -> IoResult<Self> {
-        let file = File::create(path)?;
+        let temp_path = path.as_ref().with_extension("parquet.tmp");
+        let file = File::create(&temp_path)?;
         let schema = Arc::new(Schema::new(vec![
             Field::new("relax", DataType::Boolean, false),
             Field::new("stage", DataType::UInt64, false),
@@ -40,6 +48,8 @@ impl ObservableParquetIO {
             .build();
         let writer = ArrowWriter::try_new(file, schema.clone(), Some(properties))?;
         Ok(Self {
+            path: path.as_ref().to_path_buf(),
+            temp_path,
             schema: schema.clone(),
             writer: Some(writer),
         })
@@ -86,22 +96,29 @@ impl ObservableParquetIO {
 
 impl Drop for ObservableParquetIO {
     fn drop(&mut self) {
-        if let Some(self_writer) = self.writer.take()
-            && let Err(err) = self_writer.close()
-        {
-            eprintln!("error closing parquet writer: {}", err);
+        if let Some(self_writer) = self.writer.take() {
+            if let Err(err) = self_writer.close() {
+                eprintln!("error closing parquet writer: {}", err);
+                return;
+            }
+            if let Err(err) = rename(&self.temp_path, &self.path) {
+                eprintln!("error renaming parquet file: {}", err);
+            }
         }
     }
 }
 
 pub struct StateParquetIO {
+    path: PathBuf,
+    temp_path: PathBuf,
     schema: Arc<Schema>,
     writer: Option<ArrowWriter<File>>,
 }
 
 impl StateParquetIO {
     pub fn try_new<P: AsRef<Path>>(path: P) -> IoResult<Self> {
-        let file = File::create(path)?;
+        let temp_path = path.as_ref().with_extension("parquet.tmp");
+        let file = File::create(&temp_path)?;
         let schema = Arc::new(Schema::new(vec![
             Field::new("relax", DataType::Boolean, false),
             Field::new("stage", DataType::UInt64, false),
@@ -118,6 +135,8 @@ impl StateParquetIO {
             .build();
         let writer = ArrowWriter::try_new(file, schema.clone(), Some(properties))?;
         Ok(Self {
+            path: path.as_ref().to_path_buf(),
+            temp_path,
             schema: schema.clone(),
             writer: Some(writer),
         })
@@ -165,10 +184,14 @@ impl StateParquetIO {
 
 impl Drop for StateParquetIO {
     fn drop(&mut self) {
-        if let Some(writer) = self.writer.take()
-            && let Err(err) = writer.close()
-        {
-            eprintln!("error closing parquet writer: {}", err);
-        }
+        if let Some(writer) = self.writer.take() {
+            if let Err(err) = writer.close() {
+                eprintln!("error closing parquet writer: {}", err);
+                return;
+            }
+            if let Err(err) = rename(&self.temp_path, &self.path) {
+                eprintln!("error renaming parquet file: {}", err);
+            }
+        };
     }
 }
