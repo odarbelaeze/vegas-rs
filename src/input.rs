@@ -4,7 +4,7 @@ use crate::{
     energy::{Exchange, Hamiltonian, ZeemanEnergy},
     error::VegasResult,
     instrument::{Instrument, RawStatSensor, StatSensor, StateSensor},
-    integrator::{MetropolisIntegrator, WolffIntegrator},
+    integrator::{Integrator, MetropolisFlipIntegrator, MetropolisIntegrator, WolffIntegrator},
     machine::Machine,
     program::{CoolDown, HysteresisLoop, Program, Relax},
     state::{Field, HeisenbergSpin, IsingSpin, Spin, State},
@@ -230,9 +230,12 @@ impl Default for MetropolisInputBuilder {
 }
 
 impl MetropolisInput {
-    fn run_with_spin<S: Spin + 'static, R: Rng>(&self, rng: &mut R) -> VegasResult<()> {
+    fn run_with_spin<S: Spin + 'static, R: Rng, I: Integrator<S>>(
+        &self,
+        rng: &mut R,
+        integrator: I,
+    ) -> VegasResult<()> {
         let lattice = self.lattice();
-        let integrator = MetropolisIntegrator::new();
         let hamiltonian = hamiltonian!(Exchange::from_lattice(&lattice), ZeemanEnergy::new());
         let instruments = self.instruments::<_, S>()?;
         let mut machine = Machine::new(
@@ -309,8 +312,12 @@ impl MetropolisInput {
 
     pub fn run<R: Rng>(&self, rng: &mut R) -> VegasResult<()> {
         match self.model {
-            Model::Ising => self.run_with_spin::<IsingSpin, _>(rng),
-            Model::Heisenberg => self.run_with_spin::<HeisenbergSpin, _>(rng),
+            Model::Ising => {
+                self.run_with_spin::<IsingSpin, _, _>(rng, MetropolisFlipIntegrator::new())
+            }
+            Model::Heisenberg => {
+                self.run_with_spin::<HeisenbergSpin, _, _>(rng, MetropolisIntegrator::new())
+            }
         }
     }
 }

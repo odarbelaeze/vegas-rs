@@ -40,6 +40,9 @@ pub trait Spin: Clone {
     /// Create a spin from its projections along the x, y, and z axes.
     fn from_projections(sx: f64, sy: f64, sz: f64) -> Field<Self>;
 
+    /// Flip the spin.
+    fn flip(&self) -> Self;
+
     /// Dot product of two spins.
     fn dot(&self, other: &Self) -> f64;
 
@@ -51,12 +54,6 @@ pub trait Spin: Clone {
 
     /// Projection of the spin along the z-axis.
     fn sz(&self) -> f64;
-}
-
-/// This trait represents a spin which can be flipped.
-pub trait Flip {
-    /// Flip the spin.
-    fn flip(&self) -> Self;
 }
 
 /// This enum represents an Ising spin.
@@ -121,9 +118,8 @@ impl Spin for IsingSpin {
             Down => -1f64,
         }
     }
-}
 
-impl Flip for IsingSpin {
+    #[inline]
     fn flip(&self) -> Self {
         use self::IsingSpin::{Down, Up};
         match self {
@@ -187,6 +183,11 @@ impl Spin for HeisenbergSpin {
     #[inline]
     fn sz(&self) -> f64 {
         self.0[2]
+    }
+
+    fn flip(&self) -> Self {
+        let &HeisenbergSpin(arr) = self;
+        HeisenbergSpin([-arr[0], -arr[1], -arr[2]])
     }
 }
 
