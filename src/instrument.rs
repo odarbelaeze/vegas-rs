@@ -68,6 +68,7 @@ where
     magnetization_acc: Accumulator,
     thermostat: Option<Thermostat<S>>,
     hamiltonian: Option<H>,
+    n: Option<usize>,
     phantom: PhantomData<S>,
 }
 
@@ -83,6 +84,7 @@ where
             magnetization_acc: Accumulator::new(),
             thermostat: None,
             hamiltonian: None,
+            n: None,
             phantom: PhantomData,
         }
     }
@@ -97,29 +99,32 @@ where
         &mut self,
         thermostat: &Thermostat<S>,
         hamiltonian: &H,
-        _state: &State<S>,
+        state: &State<S>,
     ) -> InstrumentResult<()> {
         self.thermostat = Some(thermostat.clone());
         self.hamiltonian = Some(hamiltonian.clone());
+        self.n = Some(state.len());
         Ok(())
     }
 
     fn on_measure_end(&mut self) -> InstrumentResult<()> {
-        if let (Some(thermostat), Some(_)) = (&self.thermostat, &self.hamiltonian) {
+        if let (Some(thermostat), Some(_), Some(n)) = (&self.thermostat, &self.hamiltonian, self.n)
+        {
             writeln!(
                 self.output,
                 "{:.16} {:.16} {:.16} {:.16} {:.16} {:.16} {:.16}",
                 thermostat.temperature(),
                 thermostat.field().magnitude(),
                 self.energy_acc.mean(),
-                self.energy_acc.variance() / thermostat.temperature(),
+                self.energy_acc.variance() / (n as f64 * thermostat.temperature().powi(2)),
                 self.magnetization_acc.mean(),
-                self.magnetization_acc.variance() / thermostat.temperature(),
+                self.magnetization_acc.variance() / (n as f64 * thermostat.temperature()),
                 self.magnetization_acc.binder_cumulant(),
             )?;
         }
         self.thermostat = None;
         self.hamiltonian = None;
+        self.n = None;
         self.energy_acc = Accumulator::new();
         self.magnetization_acc = Accumulator::new();
         Ok(())
@@ -127,8 +132,8 @@ where
 
     fn after_step(&mut self, state: &State<S>) -> InstrumentResult<()> {
         if let (Some(thermostat), Some(hamiltonian)) = (&self.thermostat, &self.hamiltonian) {
-            let energy = hamiltonian.total_energy(thermostat, state) / state.len() as f64;
-            let magnetization = state.magnetization().magnitude() / state.len() as f64;
+            let energy = hamiltonian.total_energy(thermostat, state);
+            let magnetization = state.magnetization().magnitude();
             self.energy_acc.collect(energy);
             self.magnetization_acc.collect(magnetization);
         }
@@ -146,6 +151,7 @@ where
     stage: usize,
     thermostat: Option<Thermostat<S>>,
     hamiltonian: Option<H>,
+    n: Option<usize>,
     energy: Vec<f64>,
     magnetization: Vec<f64>,
     phantom: PhantomData<S>,
@@ -162,6 +168,7 @@ where
             stage: 0,
             thermostat: None,
             hamiltonian: None,
+            n: None,
             energy: Vec::new(),
             magnetization: Vec::new(),
             phantom: PhantomData,
@@ -178,20 +185,23 @@ where
         &mut self,
         thermostat: &Thermostat<S>,
         hamiltonian: &H,
-        _state: &State<S>,
+        state: &State<S>,
     ) -> InstrumentResult<()> {
         self.thermostat = Some(thermostat.clone());
         self.hamiltonian = Some(hamiltonian.clone());
+        self.n = Some(state.len());
         self.energy.clear();
         self.magnetization.clear();
         Ok(())
     }
 
     fn on_relax_end(&mut self) -> InstrumentResult<()> {
-        if let Some(thermostat) = &self.thermostat {
+        if let (Some(thermostat), Some(_), Some(n)) = (&self.thermostat, &self.hamiltonian, self.n)
+        {
             self.io.write(
                 true,
                 self.stage,
+                n,
                 thermostat,
                 &self.energy,
                 &self.magnetization,
@@ -200,6 +210,7 @@ where
         self.stage += 1;
         self.hamiltonian = None;
         self.thermostat = None;
+        self.n = None;
         self.energy.clear();
         self.magnetization.clear();
         Ok(())
@@ -209,20 +220,23 @@ where
         &mut self,
         thermostat: &Thermostat<S>,
         hamiltonian: &H,
-        _state: &State<S>,
+        state: &State<S>,
     ) -> InstrumentResult<()> {
         self.thermostat = Some(thermostat.clone());
         self.hamiltonian = Some(hamiltonian.clone());
+        self.n = Some(state.len());
         self.energy.clear();
         self.magnetization.clear();
         Ok(())
     }
 
     fn on_measure_end(&mut self) -> InstrumentResult<()> {
-        if let Some(thermostat) = &self.thermostat {
+        if let (Some(thermostat), Some(_), Some(n)) = (&self.thermostat, &self.hamiltonian, self.n)
+        {
             self.io.write(
                 false,
                 self.stage,
+                n,
                 thermostat,
                 &self.energy,
                 &self.magnetization,
@@ -231,6 +245,7 @@ where
         self.stage += 1;
         self.hamiltonian = None;
         self.thermostat = None;
+        self.n = None;
         self.energy.clear();
         self.magnetization.clear();
         Ok(())
@@ -238,8 +253,8 @@ where
 
     fn after_step(&mut self, state: &State<S>) -> InstrumentResult<()> {
         if let (Some(thermostat), Some(hamiltonian)) = (&self.thermostat, &self.hamiltonian) {
-            let energy = hamiltonian.total_energy(thermostat, state) / state.len() as f64;
-            let magnetization = state.magnetization().magnitude() / state.len() as f64;
+            let energy = hamiltonian.total_energy(thermostat, state);
+            let magnetization = state.magnetization().magnitude();
             self.energy.push(energy);
             self.magnetization.push(magnetization);
         }

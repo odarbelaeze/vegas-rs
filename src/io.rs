@@ -38,6 +38,7 @@ impl ObservableParquetIO {
             Field::new("relax", DataType::Boolean, false),
             Field::new("stage", DataType::UInt64, false),
             Field::new("step", DataType::UInt64, false),
+            Field::new("n", DataType::UInt64, false),
             Field::new("temperature", DataType::Float64, false),
             Field::new("field", DataType::Float64, false),
             Field::new("energy", DataType::Float64, false),
@@ -59,14 +60,16 @@ impl ObservableParquetIO {
         &mut self,
         relax: bool,
         stage: usize,
+        n: usize,
         thermostat: &Thermostat<S>,
         energy: &[f64],
         magnetization: &[f64],
     ) -> IoResult<()> {
         debug_assert!(energy.len() == magnetization.len());
-        let step: UInt64Array = (0..energy.len()).map(|i| i as u64).collect();
-        let stage: UInt64Array = repeat_n(stage as u64, energy.len()).collect();
         let relax: BooleanArray = repeat_n(Some(relax), energy.len()).collect();
+        let stage: UInt64Array = repeat_n(stage as u64, energy.len()).collect();
+        let step: UInt64Array = (0..energy.len()).map(|i| i as u64).collect();
+        let n: UInt64Array = repeat_n(n as u64, energy.len()).collect();
         let temperature: Float64Array = repeat_n(thermostat.temperature(), energy.len()).collect();
         let field: Float64Array = repeat_n(thermostat.field().magnitude(), energy.len()).collect();
         let energy: Float64Array = Float64Array::from(energy.to_owned());
@@ -78,6 +81,7 @@ impl ObservableParquetIO {
                 Arc::new(relax),
                 Arc::new(stage),
                 Arc::new(step),
+                Arc::new(n),
                 Arc::new(temperature),
                 Arc::new(field),
                 Arc::new(energy),
