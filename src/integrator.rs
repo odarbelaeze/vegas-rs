@@ -28,7 +28,7 @@ use std::collections::VecDeque;
 
 use crate::{
     energy::Hamiltonian,
-    state::{Flip, IsingSpin, Spin, State},
+    state::{IsingSpin, Spin, State},
     thermostat::Thermostat,
 };
 use rand::Rng;
@@ -108,7 +108,7 @@ impl MetropolisFlipIntegrator {
 
 impl<S> Integrator<S> for MetropolisFlipIntegrator
 where
-    S: Spin + Flip,
+    S: Spin,
 {
     fn step<R: Rng, H: Hamiltonian<S>>(
         &self,
@@ -191,28 +191,31 @@ impl Integrator<IsingSpin> for WolffIntegrator {
         let sites = Uniform::new(0, state.len()).expect("should always be able to create");
         let source = sites.sample(rng);
 
+        // Determine the reference spin and the probability to add neighbors
+        let reference = state.at(source);
+        let prob = if thermostat.temperature() > 0.0 {
+            1.0 - (-2.0 * self.exchange / thermostat.temperature()).exp()
+        } else {
+            1.0
+        };
+
         // Build the cluster using a queue
         let mut queue = VecDeque::new();
         queue.push_back(source);
         let mut visited = vec![false; state.len()];
+        visited[source] = true;
         while let Some(site) = queue.pop_front() {
-            if visited[site] {
-                continue;
-            }
-            visited[site] = true;
-            let spin = state.at(site);
             for &neighbor in &self.neighbor_list[site] {
-                if !visited[neighbor] && state.at(neighbor) == spin {
-                    let prob = 1.0 - (-2.0 * self.exchange / thermostat.temperature()).exp();
+                if !visited[neighbor] && state.at(neighbor) == reference {
                     if rng.random::<f64>() < prob {
                         queue.push_back(neighbor);
+                        visited[neighbor] = true;
                     }
                 }
             }
         }
 
         // Flip the spins in the cluster
-
         state
             .into_iter()
             .zip(visited.iter())
