@@ -22,7 +22,7 @@ pub enum VegasError {
     TomlDeserializeError(#[from] TomlDeserializeError),
     #[error("toml serialization error: {0}")]
     TomlSerializeError(#[from] TomlSerializeError),
-    #[error("not implmented error")]
+    #[error("not implemented error")]
     NotImplementedError,
 }
 
