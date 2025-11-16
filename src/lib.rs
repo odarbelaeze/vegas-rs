@@ -109,7 +109,7 @@
 //! };
 //!
 //! let lattice = Lattice::sc(1.0).expand_x(10).expand_y(10).drop_z();
-//! let hamiltonian = Exchange::from_lattice(&lattice);
+//! let hamiltonian = Exchange::from_lattice(1.0, &lattice);
 //! let program = CoolDown::default()
 //!     .set_max_temperature(5.0)
 //!     .set_steps(10)
