@@ -28,7 +28,7 @@ relax = 1000
 steps = 20000
 
 [output]
-raw = "./output.parquet"
+observables = "./output.parquet"
 
 [output.state]
 path = "./state.parquet"

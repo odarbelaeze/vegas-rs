@@ -23,14 +23,14 @@ use std::{
     sync::Arc,
 };
 
-pub struct ObservableParquetIO {
+pub struct ObservableParquetOutput {
     path: PathBuf,
     temp_path: PathBuf,
     schema: Arc<Schema>,
     writer: Option<ArrowWriter<File>>,
 }
 
-impl ObservableParquetIO {
+impl ObservableParquetOutput {
     pub fn try_new<P: AsRef<Path>>(path: P) -> IoResult<Self> {
         let temp_path = path.as_ref().with_extension("parquet.tmp");
         let file = File::create(&temp_path)?;
@@ -98,7 +98,7 @@ impl ObservableParquetIO {
     }
 }
 
-impl Drop for ObservableParquetIO {
+impl Drop for ObservableParquetOutput {
     fn drop(&mut self) {
         if let Some(self_writer) = self.writer.take() {
             if let Err(err) = self_writer.close() {
@@ -112,14 +112,14 @@ impl Drop for ObservableParquetIO {
     }
 }
 
-pub struct StateParquetIO {
+pub struct StateParquetOutput {
     path: PathBuf,
     temp_path: PathBuf,
     schema: Arc<Schema>,
     writer: Option<ArrowWriter<File>>,
 }
 
-impl StateParquetIO {
+impl StateParquetOutput {
     pub fn try_new<P: AsRef<Path>>(path: P) -> IoResult<Self> {
         let temp_path = path.as_ref().with_extension("parquet.tmp");
         let file = File::create(&temp_path)?;
@@ -186,7 +186,7 @@ impl StateParquetIO {
     }
 }
 
-impl Drop for StateParquetIO {
+impl Drop for StateParquetOutput {
     fn drop(&mut self) {
         if let Some(writer) = self.writer.take() {
             if let Err(err) = writer.close() {

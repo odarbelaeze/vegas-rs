@@ -9,7 +9,7 @@ use crate::{
     accumulator::Accumulator,
     energy::Hamiltonian,
     error::{InstrumentResult, IoResult},
-    io::{ObservableParquetIO, StateParquetIO},
+    output::{ObservableParquetOutput, StateParquetOutput},
     state::{Spin, State},
     thermostat::Thermostat,
 };
@@ -141,13 +141,13 @@ where
     }
 }
 
-/// An instrument that stores raw stats in a parquet file.
-pub struct RawStatSensor<H, S>
+/// An instrument that stores observables in a parquet file.
+pub struct ObservableSensor<H, S>
 where
     H: Hamiltonian<S>,
     S: Spin,
 {
-    io: ObservableParquetIO,
+    io: ObservableParquetOutput,
     stage: usize,
     thermostat: Option<Thermostat<S>>,
     hamiltonian: Option<H>,
@@ -157,14 +157,14 @@ where
     phantom: PhantomData<S>,
 }
 
-impl<H, S> RawStatSensor<H, S>
+impl<H, S> ObservableSensor<H, S>
 where
     H: Hamiltonian<S>,
     S: Spin,
 {
     pub fn try_new<P: AsRef<Path>>(path: P) -> IoResult<Self> {
         Ok(Self {
-            io: ObservableParquetIO::try_new(path)?,
+            io: ObservableParquetOutput::try_new(path)?,
             stage: 0,
             thermostat: None,
             hamiltonian: None,
@@ -176,7 +176,7 @@ where
     }
 }
 
-impl<H, S> Instrument<H, S> for RawStatSensor<H, S>
+impl<H, S> Instrument<H, S> for ObservableSensor<H, S>
 where
     H: Hamiltonian<S>,
     S: Spin,
@@ -267,7 +267,7 @@ where
     H: Hamiltonian<S>,
     S: Spin,
 {
-    io: StateParquetIO,
+    io: StateParquetOutput,
     frequency: usize,
     relax: Option<bool>,
     step: usize,
@@ -283,7 +283,7 @@ where
 {
     pub fn try_new<P: AsRef<Path>>(path: P, frequency: usize) -> IoResult<Self> {
         Ok(Self {
-            io: StateParquetIO::try_new(path)?,
+            io: StateParquetOutput::try_new(path)?,
             frequency,
             relax: None,
             stage: 0,
