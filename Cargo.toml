@@ -1,8 +1,8 @@
 [package]
 name = "vegas"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Oscar Arbelaez <oscar@arbelaez.dev>"]
-description = "Little Monte Carlo code in rust"
+description = "Feature-rich atomistic magnetic material simulation platform."
 keywords = ["Monte-Carlo", "MCMC", "physics"]
 readme = "README.md"
 repository = "https://github.com/odarbelaeze/vegas-rs"
