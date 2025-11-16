@@ -173,13 +173,13 @@ impl Exchange {
     }
 
     /// Create a new exchange energy from a lattice.
-    pub fn from_lattice(lattice: &Lattice) -> Self {
+    pub fn from_lattice(exchange: f64, lattice: &Lattice) -> Self {
         let nsites = lattice.sites().len();
         let mut mat = TriMat::<f64>::new((nsites, nsites));
         for vertex in lattice.vertices() {
             if vertex.source() <= vertex.target() {
-                mat.add_triplet(vertex.source(), vertex.target(), 1.0);
-                mat.add_triplet(vertex.target(), vertex.source(), 1.0);
+                mat.add_triplet(vertex.source(), vertex.target(), exchange);
+                mat.add_triplet(vertex.target(), vertex.source(), exchange);
             }
         }
         let csr = mat.to_csr();

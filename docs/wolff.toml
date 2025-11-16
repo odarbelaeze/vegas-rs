@@ -1,3 +1,6 @@
+model = "Ising"
+algorithm = "Wolff"
+
 [sample.unitcell]
 name = "sc"
 
