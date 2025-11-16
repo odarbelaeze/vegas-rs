@@ -7,9 +7,15 @@
 
 ## Introduction
 
-This is an experimental implementation of an atomistic simulation package for
-magnetic systems. **vegas**'s main goal is to determine how performant is the
-[rust](www.rust-lang.com) language for this kind of application.
+**vegas** is a feature rich atomistic magnetic material simulation platform
+written in [rust](https://rust-lang.org/). It supports Ising and Heisenberg
+spins, as well as a couple of Monte Carlo algorithms, namely Metropolis and
+Wolff.
+
+Vegas is meant to be used as a library to build your custom magnetic material
+simulation programs. That said, there's an included program that can handle
+generic input and can be used as a reference implementation for your own
+programs.
 
 ## Installation
 
@@ -47,6 +53,7 @@ file is given below:
 ```toml
 # Model definition can be Ising or Heisenberg
 model = "Ising"
+algorithm = "Metropolis"
 
 # You can create unit cells of different lattice types.
 [sample.unitcell]
@@ -91,17 +98,8 @@ frequency = 1000
 You can run the simulation by executing the following command:
 
 ```bash
-vegas run metropolis input.toml
+vegas run input.toml
 ```
-
-There's a similar input for the Wolff algorithm, you can run with the following
-command:
-
-
-```bash
-vegas run wolff input.toml
-```
-
 
 ## Contributing
 
@@ -109,6 +107,6 @@ Contributions are welcome! Please open an issue or submit a pull request on
 GitHub. There are currently some missing features that would benefit the
 package, such as:
 
-- Custom exchange interaction values (so far we only support `1.0`).
+- Custom exchange interaction values, we currently support only one value.
 - More Hamiltonian terms (Dzyaloshinskii-Moriya, Dipolar, etc).
 - More integration algorithms (Wolff, Swendsen-Wang, etc).

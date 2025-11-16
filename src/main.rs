@@ -1,6 +1,6 @@
 //! A command line interface for running Vegas simulations and benchmarks.
 
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
 use std::{
@@ -11,7 +11,7 @@ use std::{
 use vegas::{
     energy::Exchange,
     error::{IoError, VegasResult},
-    input::{MetropolisInput, Model, WolffInput},
+    input::{Input, Model},
     instrument::{Instrument, StatSensor},
     integrator::MetropolisIntegrator,
     machine::Machine,
@@ -22,7 +22,7 @@ use vegas::{
 use vegas_lattice::Lattice;
 
 fn bench(lattice: Lattice, model: Model) -> VegasResult<()> {
-    let hamiltonian = Exchange::from_lattice(&lattice);
+    let hamiltonian = Exchange::from_lattice(1.0, &lattice);
     match model {
         Model::Ising => {
             let program = CoolDown::default()
@@ -60,7 +60,7 @@ fn bench_model(model: Model, length: usize) -> VegasResult<()> {
     bench(lattice, model)
 }
 
-fn run_metropolis(input: PathBuf) -> VegasResult<()> {
+fn run_input(input: PathBuf) -> VegasResult<()> {
     let mut data = String::new();
     if input == PathBuf::from("-") {
         stdin().read_to_string(&mut data).map_err(IoError::from)?;
@@ -68,26 +68,13 @@ fn run_metropolis(input: PathBuf) -> VegasResult<()> {
         let mut file = File::open(input).map_err(IoError::from)?;
         file.read_to_string(&mut data).map_err(IoError::from)?;
     };
-    let input: MetropolisInput = toml::from_str(&data)?;
-    let mut rng = Pcg64::from_rng(&mut rand::rng());
-    input.run(&mut rng)
-}
-
-fn run_wolff(input: PathBuf) -> VegasResult<()> {
-    let mut data = String::new();
-    if input == PathBuf::from("-") {
-        stdin().read_to_string(&mut data).map_err(IoError::from)?;
-    } else {
-        let mut file = File::open(input).map_err(IoError::from)?;
-        file.read_to_string(&mut data).map_err(IoError::from)?;
-    };
-    let input: WolffInput = toml::from_str(&data)?;
+    let input: Input = toml::from_str(&data)?;
     let mut rng = Pcg64::from_rng(&mut rand::rng());
     input.run(&mut rng)
 }
 
 fn print_default_input() -> VegasResult<()> {
-    let input = MetropolisInput::default();
+    let input = Input::default();
     let input = toml::to_string_pretty(&input)?;
     println!("{}", input);
     Ok(())
@@ -98,14 +85,6 @@ fn check_error(res: VegasResult<()>) {
         eprintln!("Error: {}", e);
         std::process::exit(1);
     }
-}
-
-#[derive(Debug, Clone, ValueEnum)]
-enum Integrator {
-    /// Metropolis integrator
-    Metropolis,
-    /// Wolff integrator
-    Wolff,
 }
 
 #[derive(Debug, Subcommand)]
@@ -121,8 +100,6 @@ enum SubCommand {
     Input,
     /// Run simulations
     Run {
-        /// Integrator to run
-        integrator: Integrator,
         /// Input file
         input: PathBuf,
     },
@@ -140,9 +117,6 @@ fn main() {
     match cli.subcmd {
         SubCommand::Bench { length, model } => check_error(bench_model(model, length)),
         SubCommand::Input => check_error(print_default_input()),
-        SubCommand::Run { integrator, input } => match integrator {
-            Integrator::Metropolis => check_error(run_metropolis(input)),
-            Integrator::Wolff => check_error(run_wolff(input)),
-        },
+        SubCommand::Run { input } => check_error(run_input(input)),
     }
 }

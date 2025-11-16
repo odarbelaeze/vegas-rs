@@ -22,6 +22,8 @@ pub enum VegasError {
     TomlDeserializeError(#[from] TomlDeserializeError),
     #[error("toml serialization error: {0}")]
     TomlSerializeError(#[from] TomlSerializeError),
+    #[error("not implmented error")]
+    NotImplementedError,
 }
 
 /// Error type for program misconfiguration

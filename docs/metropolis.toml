@@ -1,4 +1,5 @@
 model = "Ising"
+algorithm = "Metropolis"
 
 [sample.unitcell]
 name = "sc"
