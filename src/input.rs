@@ -3,7 +3,7 @@
 use crate::{
     energy::{Exchange, Hamiltonian, ZeemanEnergy},
     error::{VegasError, VegasResult},
-    instrument::{Instrument, RawStatSensor, StatSensor, StateSensor},
+    instrument::{Instrument, ObservableSensor, StatSensor, StateSensor},
     integrator::{Integrator, MetropolisFlipIntegrator, MetropolisIntegrator, WolffIntegrator},
     machine::Machine,
     program::{CoolDown, HysteresisLoop, Program, Relax},
@@ -117,8 +117,8 @@ pub struct StateOutput {
 /// Output for a generic simulation.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Output {
-    /// Write the raw data into the given file
-    pub raw: Option<PathBuf>,
+    /// Write the observable data into the given file
+    pub observables: Option<PathBuf>,
     /// Write states to a parquet file
     pub state: Option<StateOutput>,
 }
@@ -126,7 +126,7 @@ pub struct Output {
 impl Default for Output {
     fn default() -> Self {
         Self {
-            raw: Some("./output.parquet".into()),
+            observables: Some("./output.parquet".into()),
             state: Some(StateOutput {
                 path: "./state.parquet".into(),
                 frequency: 1000,
@@ -330,9 +330,11 @@ impl Input {
         let mut instruments: Vec<Box<dyn Instrument<_, _>>> =
             vec![Box::new(StatSensor::<_, S>::new(Box::new(stdout())))];
         if let Some(output) = &self.output
-            && let Some(raw_filename) = &output.raw
+            && let Some(observable_filename) = &output.observables
         {
-            instruments.push(Box::new(RawStatSensor::<_, S>::try_new(raw_filename)?));
+            instruments.push(Box::new(ObservableSensor::<_, S>::try_new(
+                observable_filename,
+            )?));
         }
         if let Some(output) = &self.output
             && let Some(state_output) = &output.state

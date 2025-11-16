@@ -58,7 +58,7 @@
 //! Among others this library provides the following instruments:
 //!
 //! * `StatSensor` - An instrument that measures the statistical properties of the spin system.
-//! * `RawStatSensor` - An instrument that measures the raw statistical properties of the spin system.
+//! * `ObservableSensor` - An instrument that measures the observables of the spin system.
 //! * `StateSensor` - An instrument that writes the state of the spin system.
 //!
 //! ## Machine
@@ -132,8 +132,8 @@ pub mod error;
 pub mod input;
 pub mod instrument;
 pub mod integrator;
-pub mod io;
 pub mod machine;
+pub mod output;
 pub mod program;
 pub mod state;
 pub mod thermostat;

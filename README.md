@@ -51,8 +51,10 @@ You can use the toml input file format to run simulations. An example of input
 file is given below:
 
 ```toml
-# Model definition can be Ising or Heisenberg
+# Model definition can be Ising or Heisenberg.
 model = "Ising"
+
+# Algorithm definition can be Metropolis or Wolff.
 algorithm = "Metropolis"
 
 # You can create unit cells of different lattice types.
@@ -88,7 +90,7 @@ steps = 20000
 
 # You can define outputs to be written during the simulation.
 [output]
-raw = "./output.parquet"
+observables = "./output.parquet"
 
 [output.state]
 path = "./state.parquet"
