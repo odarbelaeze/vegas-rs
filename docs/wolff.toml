@@ -14,12 +14,12 @@ x = true
 y = true
 z = true
 
-[[steps]]
+[[stages]]
 program = "Relax"
 steps = 1000
 temperature = 6.0
 
-[[steps]]
+[[stages]]
 program = "CoolDown"
 max_temperature = 6.0
 min_temperature = 1.0

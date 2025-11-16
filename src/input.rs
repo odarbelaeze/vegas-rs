@@ -137,7 +137,7 @@ impl Default for Output {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "program")]
-pub enum Step {
+pub enum Stage {
     /// Relaxation
     Relax(Relax),
     /// Curie temperature
@@ -146,9 +146,9 @@ pub enum Step {
     Hysteresis(HysteresisLoop),
 }
 
-impl Default for Step {
+impl Default for Stage {
     fn default() -> Self {
-        Step::Relax(Relax::default())
+        Stage::Relax(Relax::default())
     }
 }
 
@@ -164,7 +164,7 @@ pub struct Input {
     /// Sample to simulate
     sample: Sample,
     /// Steps to take
-    steps: Vec<Step>,
+    stages: Vec<Stage>,
     /// Output for the simulation
     output: Option<Output>,
 }
@@ -182,9 +182,9 @@ impl Default for Input {
             algorithm: Default::default(),
             exchange: Default::default(),
             sample: Default::default(),
-            steps: vec![
-                Step::Relax(Relax::default()),
-                Step::CoolDown(CoolDown::default()),
+            stages: vec![
+                Stage::Relax(Relax::default()),
+                Stage::CoolDown(CoolDown::default()),
             ],
             output: Some(Output::default()),
         }
@@ -196,7 +196,7 @@ pub struct InputBuilder {
     algorithm: Option<Algorithm>,
     exchange: Option<f64>,
     sample: Option<Sample>,
-    steps: Option<Vec<Step>>,
+    steps: Option<Vec<Stage>>,
     output: Option<Output>,
 }
 
@@ -232,7 +232,7 @@ impl InputBuilder {
         self
     }
 
-    pub fn steps(mut self, steps: Vec<Step>) -> Self {
+    pub fn steps(mut self, steps: Vec<Stage>) -> Self {
         self.steps = Some(steps);
         self
     }
@@ -248,7 +248,7 @@ impl InputBuilder {
             algorithm: self.algorithm.unwrap_or_default(),
             exchange: self.exchange,
             sample: self.sample.unwrap_or_default(),
-            steps: self.steps.unwrap_or_default(),
+            stages: self.steps.unwrap_or_default(),
             output: self.output,
         }
     }
@@ -280,15 +280,15 @@ impl Input {
             instruments,
             State::<S>::rand_with_size(rng, lattice.sites().len()),
         );
-        for program in self.steps.iter() {
+        for program in self.stages.iter() {
             match program {
-                Step::Relax(relax) => {
+                Stage::Relax(relax) => {
                     relax.run(rng, &mut machine)?;
                 }
-                Step::CoolDown(curie) => {
+                Stage::CoolDown(curie) => {
                     curie.run(rng, &mut machine)?;
                 }
-                Step::Hysteresis(hysteresis) => {
+                Stage::Hysteresis(hysteresis) => {
                     hysteresis.run(rng, &mut machine)?;
                 }
             }

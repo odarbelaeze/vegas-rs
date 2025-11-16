@@ -74,13 +74,13 @@ y = true
 z = false
 
 
-# You can control the steps of the simulation.
-[[steps]]
+# You can control the stages of the simulation.
+[[stages]]
 program = "Relax"
 steps = 1000
 temperature = 4.0
 
-[[steps]]
+[[stages]]
 program = "CoolDown"
 max_temperature = 4.0
 min_temperature = 0.1
