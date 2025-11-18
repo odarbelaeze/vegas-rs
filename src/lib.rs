@@ -47,7 +47,7 @@
 //! * `Exchange` - A hamiltonian that calculates the exchange energy of a spin system.
 //! * `Gauge` - A hamiltonian that calculates the gauge energy of a spin system.
 //! * `UniaxialAnisotropy` - A hamiltonian that calculates the uniaxial anisotropy energy of a spin system.
-//! * `ZeemanEnergy` - A hamiltonian that calculates the Zeeman energy of a spin system.
+//! * `Zeeman` - A hamiltonian that calculates the Zeeman energy of a spin system.
 //! * `Compound` - A hamiltonian that combines multiple hamiltonians.
 //!
 //! ## Instruments
