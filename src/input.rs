@@ -1,7 +1,7 @@
 //! Input structures for various simulations.
 
 use crate::{
-    energy::{Exchange, Hamiltonian, ZeemanEnergy},
+    energy::{Exchange, Hamiltonian, Zeeman},
     error::{VegasError, VegasResult},
     instrument::{Instrument, ObservableSensor, StatSensor, StateSensor},
     integrator::{Integrator, MetropolisFlipIntegrator, MetropolisIntegrator, WolffIntegrator},
@@ -268,10 +268,7 @@ impl Input {
         exchange: f64,
     ) -> VegasResult<()> {
         let lattice = self.lattice();
-        let hamiltonian = hamiltonian!(
-            Exchange::from_lattice(exchange, &lattice),
-            ZeemanEnergy::new()
-        );
+        let hamiltonian = hamiltonian!(Exchange::from_lattice(exchange, &lattice), Zeeman::new());
         let instruments = self.instruments::<_, S>()?;
         let mut machine = Machine::new(
             Thermostat::new(2.8, Field::zero()),

@@ -4,7 +4,7 @@
 //! site for a given state.
 //!
 //! The module provides several built-in energy components, such as
-//! `Gauge`, `UniaxialAnisotropy`, `ZeemanEnergy`, and `Exchange`.
+//! `Gauge`, `UniaxialAnisotropy`, `Zeeman`, and `Exchange`.
 //!
 //! It also provides a `Compound` energy component that allows you to
 //! combine multiple energy components into a single one. The compound
@@ -122,14 +122,14 @@ where
 
 /// Energy resulting from a magnetic field.
 #[derive(Clone, Debug, Default)]
-pub struct ZeemanEnergy<S>
+pub struct Zeeman<S>
 where
     S: Spin,
 {
     phantom: PhantomData<S>,
 }
 
-impl<S> ZeemanEnergy<S>
+impl<S> Zeeman<S>
 where
     S: Spin,
 {
@@ -140,7 +140,7 @@ where
     }
 }
 
-impl<S> Hamiltonian<S> for ZeemanEnergy<S>
+impl<S> Hamiltonian<S> for Zeeman<S>
 where
     S: Spin,
 {
@@ -292,7 +292,7 @@ macro_rules! hamiltonian {
 #[cfg(test)]
 mod tests {
     use crate::{
-        energy::{Compound, Gauge, Hamiltonian, UniaxialAnisotropy, ZeemanEnergy},
+        energy::{Compound, Gauge, Hamiltonian, UniaxialAnisotropy, Zeeman},
         state::{Field, HeisenbergSpin, Spin, State},
         thermostat::Thermostat,
     };
@@ -317,7 +317,7 @@ mod tests {
     fn test_zeeman_energy() {
         let ups = State::<HeisenbergSpin>::up_with_size(10);
         let downs = State::<HeisenbergSpin>::down_with_size(10);
-        let anisotropy = ZeemanEnergy::new();
+        let anisotropy = Zeeman::new();
         assert!(
             anisotropy.total_energy(
                 &Thermostat::new(0.0, Field::new(HeisenbergSpin::up(), 1.0)),
@@ -338,7 +338,7 @@ mod tests {
     fn test_zeeman_energy_multiplies_correctly() {
         let ups = State::<HeisenbergSpin>::up_with_size(10);
         let downs = State::<HeisenbergSpin>::down_with_size(10);
-        let anisotropy = ZeemanEnergy::new();
+        let anisotropy = Zeeman::new();
         assert!(
             anisotropy.total_energy(
                 &Thermostat::new(0.0, Field::new(HeisenbergSpin::up(), 2.0)),

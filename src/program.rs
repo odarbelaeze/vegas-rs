@@ -17,7 +17,7 @@
 //! use rand::SeedableRng;
 //! use rand_pcg::Pcg64;
 //! use vegas::{
-//!    energy::{Hamiltonian, ZeemanEnergy},
+//!    energy::{Hamiltonian, Zeeman},
 //!    integrator::MetropolisIntegrator,
 //!    machine::Machine,
 //!    program::{CoolDown, Program},
@@ -26,7 +26,7 @@
 //! };
 //!
 //! // Define a Hamiltonian (e.g., Zeeman Energy).
-//! let hamiltonian = ZeemanEnergy::new();
+//! let hamiltonian = Zeeman::new();
 //! let program = CoolDown::default()
 //!    .set_relax(10)
 //!    .set_steps(10);
