@@ -10,7 +10,7 @@
 //! combine multiple energy components into a single one. The compound
 //! energy component computes the total energy by summing the energies
 //! of its constituent components. Furthermore, a convenient macro
-//! `hamiltonian!` is provided to easily build complex hamiltonians by
+//! `hamiltonian!` is provided to easily build complex Hamiltonians by
 //! combining multiple energy components.
 //!
 //! # Example
@@ -174,16 +174,16 @@ impl Exchange {
 
     /// Create a new exchange energy from a lattice.
     pub fn from_lattice(exchange: f64, lattice: &Lattice) -> Self {
-        let nsites = lattice.sites().len();
-        let mut mat = TriMat::<f64>::new((nsites, nsites));
-        for vertex in lattice.vertices() {
-            if vertex.source() <= vertex.target() {
-                mat.add_triplet(vertex.source(), vertex.target(), exchange);
-                mat.add_triplet(vertex.target(), vertex.source(), exchange);
+        let n_sites = lattice.sites().len();
+        let mut mat = TriMat::<f64>::new((n_sites, n_sites));
+        for edge in lattice.edges() {
+            if edge.source() <= edge.target() {
+                mat.add_triplet(edge.source(), edge.target(), exchange);
+                mat.add_triplet(edge.target(), edge.source(), exchange);
             }
         }
-        let csr = mat.to_csr();
-        Self::new(csr)
+        let matrix = mat.to_csr();
+        Self::new(matrix)
     }
 }
 
