@@ -160,9 +160,9 @@ impl WolffIntegrator {
     /// Create a new Wolff integrator from a lattice.
     pub fn from_lattice(exchange: f64, lattice: &Lattice) -> Self {
         let mut neighbor_list = vec![Vec::new(); lattice.sites().len()];
-        for vertex in lattice.vertices() {
-            neighbor_list[vertex.source()].push(vertex.target());
-            neighbor_list[vertex.target()].push(vertex.source());
+        for edge in lattice.edges() {
+            neighbor_list[edge.source()].push(edge.target());
+            neighbor_list[edge.target()].push(edge.source());
         }
         Self {
             exchange,
