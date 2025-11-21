@@ -62,7 +62,7 @@ fn bench_model(model: Model, length: usize) -> VegasResult<()> {
 
 fn run_input(input: PathBuf) -> VegasResult<()> {
     let mut data = String::new();
-    if input == PathBuf::from("-") {
+    if &input == "-" {
         stdin().read_to_string(&mut data).map_err(IoError::from)?;
     } else {
         let mut file = File::open(input).map_err(IoError::from)?;
