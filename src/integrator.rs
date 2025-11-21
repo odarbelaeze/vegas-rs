@@ -206,11 +206,12 @@ impl Integrator<IsingSpin> for WolffIntegrator {
         visited[source] = true;
         while let Some(site) = queue.pop_front() {
             for &neighbor in &self.neighbor_list[site] {
-                if !visited[neighbor] && state.at(neighbor) == reference {
-                    if rng.random::<f64>() < prob {
-                        queue.push_back(neighbor);
-                        visited[neighbor] = true;
-                    }
+                if !visited[neighbor]
+                    && state.at(neighbor) == reference
+                    && rng.random::<f64>() < prob
+                {
+                    queue.push_back(neighbor);
+                    visited[neighbor] = true;
                 }
             }
         }
