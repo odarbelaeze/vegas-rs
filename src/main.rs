@@ -21,14 +21,18 @@ use vegas::{
 };
 use vegas_lattice::Lattice;
 
-fn bench(lattice: Lattice, model: Model) -> VegasResult<()> {
+fn bench_model(model: Model, length: usize, seed: Option<u64>) -> VegasResult<()> {
+    let lattice = Lattice::sc(1.0).expand_all(length);
     let hamiltonian = Exchange::from_lattice(1.0, &lattice);
+    let mut rng = match seed {
+        Some(s) => Pcg64::seed_from_u64(s),
+        None => Pcg64::from_rng(&mut rand::rng()),
+    };
     match model {
         Model::Ising => {
             let program = CoolDown::default()
                 .set_max_temperature(5.0)
                 .set_cool_rate(0.05);
-            let mut rng = Pcg64::from_rng(&mut rand::rng());
             let state = State::<IsingSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
             let thermostat = Thermostat::new(2.8, Field::zero());
@@ -42,7 +46,6 @@ fn bench(lattice: Lattice, model: Model) -> VegasResult<()> {
             let program = CoolDown::default()
                 .set_max_temperature(2.5)
                 .set_cool_rate(0.05);
-            let mut rng = Pcg64::from_rng(&mut rand::rng());
             let state = State::<HeisenbergSpin>::rand_with_size(&mut rng, lattice.sites().len());
             let integrator = MetropolisIntegrator::new();
             let thermostat = Thermostat::new(2.8, Field::zero());
@@ -55,12 +58,7 @@ fn bench(lattice: Lattice, model: Model) -> VegasResult<()> {
     }
 }
 
-fn bench_model(model: Model, length: usize) -> VegasResult<()> {
-    let lattice = Lattice::sc(1.0).expand_all(length);
-    bench(lattice, model)
-}
-
-fn run_input(input: PathBuf) -> VegasResult<()> {
+fn run_input(input: PathBuf, seed: Option<u64>) -> VegasResult<()> {
     let mut data = String::new();
     if &input == "-" {
         stdin().read_to_string(&mut data).map_err(IoError::from)?;
@@ -69,7 +67,10 @@ fn run_input(input: PathBuf) -> VegasResult<()> {
         file.read_to_string(&mut data).map_err(IoError::from)?;
     };
     let input: Input = toml::from_str(&data)?;
-    let mut rng = Pcg64::from_rng(&mut rand::rng());
+    let mut rng = match seed {
+        Some(s) => Pcg64::seed_from_u64(s),
+        None => Pcg64::from_rng(&mut rand::rng()),
+    };
     input.run(&mut rng)
 }
 
@@ -89,19 +90,25 @@ fn check_error(res: VegasResult<()>) {
 
 #[derive(Debug, Subcommand)]
 enum SubCommand {
+    /// Print the default input
+    Input,
     /// Run benchmarks
     Bench {
         /// Model to run
         model: Model,
         /// Length of the side lattice
         length: usize,
+        /// Seed for RNG, random if omitted
+        #[arg(short, long)]
+        seed: Option<u64>,
     },
-    /// Print the default input
-    Input,
-    /// Run simulations
+    /// Run a simulation from an input file
     Run {
-        /// Input file
+        /// Input file, or "-" for stdin
         input: PathBuf,
+        /// Seed for RNG, random if omitted
+        #[arg(short, long)]
+        seed: Option<u64>,
     },
 }
 
@@ -115,8 +122,12 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
     match cli.subcmd {
-        SubCommand::Bench { length, model } => check_error(bench_model(model, length)),
         SubCommand::Input => check_error(print_default_input()),
-        SubCommand::Run { input } => check_error(run_input(input)),
+        SubCommand::Bench {
+            length,
+            model,
+            seed,
+        } => check_error(bench_model(model, length, seed)),
+        SubCommand::Run { input, seed } => check_error(run_input(input, seed)),
     }
 }
